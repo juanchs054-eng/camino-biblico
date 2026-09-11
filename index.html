@@ -8325,7 +8325,12 @@ async function checkPremiumReturn(){
     }catch{
       throw new Error(`El servidor respondió algo inesperado (status ${res.status}): ${rawText.slice(0,200) || '(vacío)'}`);
     }
-    if(!res.ok) throw new Error(data.error || `Error verificando el pago (status ${res.status})`);
+    if(!res.ok){
+      let msg = data.error || `Error verificando el pago (status ${res.status})`;
+      if(data.wompiStatus) msg += ` | Wompi status: ${data.wompiStatus}`;
+      if(data.wompiBody) msg += ` | Wompi dijo: ${data.wompiBody}`;
+      throw new Error(msg);
+    }
     if(data.paid && data.outfitId){
       if(!state.unlockedPremium.includes(data.outfitId)) state.unlockedPremium.push(data.outfitId);
       state.equippedOutfit = data.outfitId;
