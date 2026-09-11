@@ -24,9 +24,15 @@ export async function onRequestPost({ request, env }) {
       return Response.json({ error: 'Falta configurar WOMPI_PUBLIC_KEY en Cloudflare' }, { status: 500 });
     }
 
+    // Sandbox y producción son API COMPLETAMENTE distintas en Wompi, con dominios
+    // distintos. Elegimos el dominio según el prefijo de la llave configurada.
+    const wompiHost = publicKey.startsWith('pub_test_')
+      ? 'https://sandbox.wompi.co'
+      : 'https://production.wompi.co';
+
     let wompiRes;
     try {
-      wompiRes = await fetch(`https://production.wompi.co/v1/transactions/${transactionId}`, {
+      wompiRes = await fetch(`${wompiHost}/v1/transactions/${transactionId}`, {
         headers: { Authorization: `Bearer ${publicKey}` },
       });
     } catch (fetchErr) {
