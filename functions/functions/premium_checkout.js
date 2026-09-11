@@ -1,46 +1,70 @@
-// functions/functions/premium_verify.js
-// Ruta resultante en Cloudflare Pages: /functions/premium_verify
-// El HTML del juego llama a esta ruta con POST { transactionId }
-// tras volver del checkout de Wompi (usa el ?id=... que Wompi agrega a la URL de retorno).
+// functions/api/premium_checkout.js
+// Ruta resultante en Cloudflare Pages: /api/premium_checkout
+// El HTML del juego llama a esta ruta con POST { outfitId }
+
+// Debe coincidir EXACTO con la lista PREMIUM_OUTFITS del HTML (id y price).
+const PREMIUM_OUTFITS = {
+  'armadura-dios': 9000,
+  'jesus': 9000,
+  'moises': 9000,
+  'elias': 9000,
+  'david': 9000,
+  'ester': 9000,
+  'rut': 9000,
+  'raquel': 9000,
+  'maria': 9000,
+};
+
+async function sha256Hex(text) {
+  const data = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(hashBuffer)]
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 export async function onRequestPost({ request, env }) {
   try {
-    const { transactionId } = await request.json();
-    if (!transactionId) {
-      return Response.json({ error: 'Falta el id de la transacción' }, { status: 400 });
+    const { outfitId } = await request.json();
+
+    const priceCop = PREMIUM_OUTFITS[outfitId];
+    if (!priceCop) {
+      return Response.json({ error: 'Traje premium no válido' }, { status: 400 });
     }
 
-    const privateKey = env.WOMPI_PRIVATE_KEY;
-    if (!privateKey) {
+    const publicKey = env.WOMPI_PUBLIC_KEY;
+    const integritySecret = env.WOMPI_INTEGRITY_SECRET;
+    if (!publicKey || !integritySecret) {
       return Response.json(
-        { error: 'Falta configurar WOMPI_PRIVATE_KEY en Cloudflare' },
+        { error: 'Faltan configurar las llaves de Wompi en Cloudflare (Settings > Environment variables)' },
         { status: 500 }
       );
     }
 
-    // Wompi expone esta consulta de forma pública (sin necesitar la llave privada
-    // en la cabecera), pero la enviamos igual por si tu cuenta la exige.
-    const wompiRes = await fetch(`https://production.wompi.co/v1/transactions/${transactionId}`, {
-      headers: { Authorization: `Bearer ${privateKey}` },
-    });
+    // La referencia incluye el outfitId para poder recuperarlo luego en premium_verify,
+    // más un token aleatorio para que cada intento de compra sea único.
+    const randomToken = crypto.randomUUID().slice(0, 8);
+    const reference = `outfit-${outfitId}-${randomToken}`;
 
-    if (!wompiRes.ok) {
-      return Response.json({ error: 'No se pudo consultar la transacción en Wompi' }, { status: 502 });
-    }
+    const amountInCents = priceCop * 100; // Wompi trabaja en centavos
+    const currency = 'COP';
 
-    const wompiData = await wompiRes.json();
-    const tx = wompiData.data;
-    const status = tx?.status; // 'APPROVED' | 'DECLINED' | 'PENDING' | 'ERROR' | 'VOIDED'
-    const reference = tx?.reference || '';
+    // Firma de integridad exigida por Wompi: sha256(referencia + monto + moneda + secreto)
+    const signature = await sha256Hex(`${reference}${amountInCents}${currency}${integritySecret}`);
 
-    // La referencia tiene forma "outfit-<id>-<token>", recuperamos el <id>.
-    const match = reference.match(/^outfit-(.+)-[a-z0-9]{8}$/i);
-    const outfitId = match ? match[1] : null;
+    const redirectUrl = new URL(request.url);
+    redirectUrl.pathname = '/'; // vuelve a la página principal del juego tras pagar
+    redirectUrl.search = '';
 
-    if (status === 'APPROVED' && outfitId) {
-      return Response.json({ paid: true, outfitId, status });
-    }
-    return Response.json({ paid: false, status: status || 'UNKNOWN' });
+    const checkoutUrl = new URL('https://checkout.wompi.co/p/');
+    checkoutUrl.searchParams.set('public-key', publicKey);
+    checkoutUrl.searchParams.set('currency', currency);
+    checkoutUrl.searchParams.set('amount-in-cents', String(amountInCents));
+    checkoutUrl.searchParams.set('reference', reference);
+    checkoutUrl.searchParams.set('signature:integrity', signature);
+    checkoutUrl.searchParams.set('redirect-url', redirectUrl.toString());
+
+    return Response.json({ url: checkoutUrl.toString() });
   } catch (err) {
     return Response.json({ error: 'Error interno: ' + err.message }, { status: 500 });
   }

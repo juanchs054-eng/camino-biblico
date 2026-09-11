@@ -1,5 +1,5 @@
-// functions/functions/premium_verify.js
-// Ruta resultante en Cloudflare Pages: /functions/premium_verify
+// functions/api/premium_verify.js
+// Ruta resultante en Cloudflare Pages: /api/premium_verify
 // El HTML del juego llama a esta ruta con POST { transactionId }
 // tras volver del checkout de Wompi (usa el ?id=... que Wompi agrega a la URL de retorno).
 
