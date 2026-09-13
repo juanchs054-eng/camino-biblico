@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "dev.pages.camino_biblico.twa",
+        "sha256_cert_fingerprints": ["8C:C2:6F:DA:6B:1C:A9:BF:D3:77:9F:0B:23:59:89:D4:3E:CB:63:52:9B:51:8C:C2:F5:D5:30:43:5D:86:E3:BF"]
+      }
+    }]
