@@ -13,6 +13,9 @@ const PREMIUM_OUTFITS = {
   'rut': 9000,
   'raquel': 9000,
   'maria': 9000,
+  'saulo': 9000,
+  'pablo': 9000,
+  'jose': 9000,
 };
 
 async function sha256Hex(text) {
