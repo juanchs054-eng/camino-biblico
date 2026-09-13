@@ -6,6 +6,10 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#141838">
 <title>Camino Bíblico</title>
 <style>
   :root{
@@ -3910,6 +3914,13 @@ document.getElementById('toggleVibration').addEventListener('change', function()
   warmupFullbodyCache();
   checkPremiumReturn();
 })();
+// Registrar el service worker para que el juego se pueda instalar como app
+// y funcione (con lo ya visitado) incluso sin conexión.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 
