@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Camino Bíblico</title>
 <style>
   :root{
@@ -103,7 +106,7 @@
     background:linear-gradient(135deg,#232a52,#1a1e3d); border:1px solid var(--gold-dark);
     display:flex; align-items:center; gap:14px; cursor:pointer;
   }
-  .avatar-card-preview{width:70px; height:90px; position:relative; flex-shrink:0; transform:scale(0.62); transform-origin:top left; overflow:visible;}
+  .avatar-card-preview{width:106px; height:150px; position:relative; flex-shrink:0; transform:scale(0.95); transform-origin:top left; overflow:visible;}
   .avatar-card-info{flex:1;}
   .avatar-card-name{font-weight:700; color:var(--gold); font-size:0.95rem;}
   .avatar-card-hint{font-size:0.75rem; color:#b9b6c9; margin-top:2px;}
@@ -111,8 +114,9 @@
   /* ---- Tienda ---- */
   #screen-shop{background:linear-gradient(180deg,#1c2140 0%, #10132a 100%);}
   .shop-scroll{flex:1; overflow-y:auto; padding:10px 16px 60px;}
-  .shop-preview{display:flex; justify-content:center; align-items:flex-start; padding:24px 0 20px; min-height:210px;}
-  .shop-avatar-big{transform:scale(1.15); transform-origin:top center;}
+  .shop-preview{display:flex; justify-content:center; align-items:flex-start; padding:18px 0 20px;}
+  .shop-preview-frame{width:220px; height:322px; border-radius:20px; background:linear-gradient(180deg,#262d5a,#141837); border:1px solid #3a3f6e; display:flex; justify-content:center; align-items:flex-start; padding-top:20px; box-shadow:inset 0 0 30px rgba(0,0,0,0.35);}
+  .shop-avatar-big{transform:scale(1.7); transform-origin:top center;}
   .shop-section-title{color:var(--gold); font-size:1rem; margin:22px 0 12px;}
   .outfit-list{display:flex; flex-direction:column; gap:12px;}
   .outfit-card{
@@ -241,32 +245,52 @@
   .fighter{position:relative; width:110px; height:160px; filter:drop-shadow(0 14px 10px rgba(0,0,0,0.6));}
   #fighterBoss{width:150px; height:190px; display:flex; align-items:center; justify-content:center;}
   .fighter.hit{animation:bodyHit .4s ease;}
-  .fighter.attack{animation:bodyLunge .35s ease;}
+  .fighter.attack{animation:bodyLunge .38s ease;}
   @keyframes bodyLunge{
-    0%{transform:translateX(0);} 50%{transform:translateX(14px);} 100%{transform:translateX(0);}
+    0%{transform:translateX(0);} 30%{transform:translateX(-5px);} 65%{transform:translateX(16px);} 100%{transform:translateX(0);}
   }
   @keyframes bodyHit{
-    0%,100%{transform:translateX(0) rotate(0);} 25%{transform:translateX(-10px) rotate(-4deg);} 75%{transform:translateX(6px) rotate(3deg);}
+    0%,100%{transform:translateX(0) rotate(0);} 25%{transform:translateX(-9px) rotate(-3deg);} 75%{transform:translateX(5px) rotate(2deg);}
   }
 
   /* ---- Personaje jugador (piezas gráficas 2D con fondo transparente, estilo cartoon) ---- */
   .p-head,.p-torso,.p-leg,.p-arm-guard,.p-arm-punch{background-repeat:no-repeat; background-size:100% 100%; background-position:center;}
-  .p-head{position:absolute; top:0; left:32px; width:46px; height:46px; z-index:2;}
+  .p-head{position:absolute; top:0; left:43px; width:24px; height:24px; z-index:5;}
   .p-hair{display:none;}
-  .p-torso{position:absolute; top:42px; left:22px; width:66px; height:62px; border-radius:14px 14px 8px 8px; background-color:#e8b98a; border:2px solid #a5713f; z-index:3;}
+  .p-torso{position:absolute; top:22px; left:37px; width:36px; height:54px; border-radius:12px 12px 6px 6px; background-color:#e8b98a; border:1px solid #a5713f; z-index:3;}
   /* La túnica de hojas viene incluida en la imagen del torso; los divs de hojas quedan ocultos */
   .p-leaf-shoulder,.p-leaf-skirt,.p-leaf-mid{display:none;}
   /* Piernas descalzas (fallback CSS para los trajes comprados) */
-  .p-leg{position:absolute; top:100px; width:19px; height:58px; background-color:#e8b98a; border-radius:8px 8px 10px 10px; border:2px solid #a5713f; z-index:2;}
-  .p-leg.back{left:40px; transform:rotate(-4deg); transform-origin:top center;}
-  .p-leg.front{left:56px; transform:rotate(5deg); transform-origin:top center;}
-  .p-arm-guard{position:absolute; top:48px; left:16px; width:22px; height:40px; z-index:4; transform:rotate(6deg); transform-origin:top center;}
-  .p-arm-punch{position:absolute; top:62px; left:62px; width:44px; height:20px; z-index:4; transform-origin:left center; transform:scaleX(0.4) rotate(-4deg);}
-  .p-arm-punch.punching{animation:punchArm .38s ease;}
+  .p-leg{position:absolute; top:72px; width:19px; height:74px; background-color:#e8b98a; border-radius:6px 6px 8px 8px; border:1px solid #a5713f; z-index:2;}
+  .p-leg.back{left:38px; transform:rotate(-3deg); transform-origin:top center;}
+  .p-leg.front{left:58px; transform:rotate(4deg); transform-origin:top center;}
+  /* La niña tiene piernas más cortas: subirlas para que el muslo una con el torso */
+  .p-hair.female ~ .p-leg{top:64px;}
+  /* Cuerpo completo en una sola imagen: se usa en mapa y tienda (vistas estáticas,
+     sin animación), evitando el problema de alinear piezas sueltas entre sí. */
+  .p-fullbody{position:absolute; inset:0; background-repeat:no-repeat; background-size:contain;
+    background-position:bottom center; display:none; z-index:10;}
+  /* En la pelea, el cuerpo se ancla abajo-izquierda y solo cambia de imagen (reposo/golpe);
+     así el cuerpo nunca cambia de tamaño, solo se ve el brazo extenderse hacia la derecha. */
+  #fighterPlayer .p-fullbody{background-size:auto 100%; background-position:bottom left;}
+  .p-arm-guard{position:absolute; top:24px; left:25px; width:18px; height:44px; z-index:4; transform:rotate(7deg); transform-origin:top center;}
+  .p-arm-punch{position:absolute; top:34px; left:62px; width:52px; height:12px; z-index:6; transform-origin:left center; transform:scaleX(0.35) rotate(-3deg);}
+  .p-arm-punch.punching{animation:punchArm .42s ease;}
   @keyframes punchArm{
-    0%{transform:scaleX(0.4) rotate(-4deg);}
-    45%{transform:scaleX(1.5) rotate(2deg);}
-    100%{transform:scaleX(0.4) rotate(-4deg);}
+    0%{transform:scaleX(0.35) rotate(-3deg);}
+    18%{transform:scaleX(0.28) rotate(-7deg);}
+    55%{transform:scaleX(1.45) rotate(2deg);}
+    75%{transform:scaleX(1.45) rotate(2deg);}
+    100%{transform:scaleX(0.35) rotate(-3deg);}
+  }
+  /* Golpe del brazo izquierdo: sale de su posición de guardia y vuelve exactamente a ella */
+  .p-arm-guard.punching{animation:punchArmLeft .42s ease; z-index:6;}
+  @keyframes punchArmLeft{
+    0%{transform:rotate(7deg);}
+    18%{transform:rotate(1deg);}
+    55%{transform:rotate(94deg) scaleX(1.35);}
+    75%{transform:rotate(94deg) scaleX(1.35);}
+    100%{transform:rotate(7deg);}
   }
   .p-fist{display:none;}
 
@@ -285,57 +309,54 @@
 
   /* ---- Accesorios de la tienda ---- */
   .acc{position:absolute; z-index:7; pointer-events:none;}
-  .acc-halo{top:-12px; left:24px; width:62px; height:16px; border-radius:50%; border:4px solid #ffe066; box-shadow:0 0 10px 2px rgba(255,224,102,.45); border-bottom-color:rgba(255,224,102,.3);}
-  .acc-gorro{top:-20px; left:24px; width:62px; height:22px; background:#8a5a2a; border:2px solid #5a3a1a; border-radius:30px 30px 4px 4px;}
-  .acc-gorro::after{content:''; position:absolute; top:13px; left:-5px; right:-5px; height:7px; background:#a06a34; border:2px solid #5a3a1a; border-radius:5px;}
-  .acc-sandalias{top:134px; left:0;}
-  .acc-sandalias::before, .acc-sandalias::after{content:''; position:absolute; top:0; width:24px; height:11px; background:#b07840; border:2px solid #6a4520; border-radius:5px 5px 3px 3px;}
-  .acc-sandalias::before{left:32px;}
-  .acc-sandalias::after{left:58px;}
-  .acc-escudo{top:52px; left:12px; width:26px; height:32px; z-index:6; background:#9aa8c0; border:3px solid #5a6a8a; border-radius:13px;}
-  .acc-escudo::after{content:'✝'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#3a4a6a; font-size:13px; font-weight:700;}
+  .acc-halo{top:-10px; left:20px; width:70px; height:14px; border-radius:50%; border:3px solid #ffe066; box-shadow:0 0 10px 2px rgba(255,224,102,.45); border-bottom-color:rgba(255,224,102,.3);}
+  .acc-gorro{top:-16px; left:20px; width:70px; height:20px; background:#8a5a2a; border:2px solid #5a3a1a; border-radius:28px 28px 4px 4px;}
+  .acc-gorro::after{content:''; position:absolute; top:12px; left:-4px; right:-4px; height:6px; background:#a06a34; border:2px solid #5a3a1a; border-radius:5px;}
+  .acc-sandalias{top:146px; left:0;}
+  .acc-sandalias::before, .acc-sandalias::after{content:''; position:absolute; top:0; width:22px; height:10px; background:#b07840; border:2px solid #6a4520; border-radius:5px 5px 3px 3px;}
+  .acc-sandalias::before{left:30px;}
+  .acc-sandalias::after{left:52px;}
+  .acc-escudo{top:30px; left:16px; width:24px; height:30px; z-index:6; background:#9aa8c0; border:3px solid #5a6a8a; border-radius:12px;}
+  .acc-escudo::after{content:'✝'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#3a4a6a; font-size:12px; font-weight:700;}
 
   /* ---- Trajes Premium (compra con dinero real) ---- */
   .ext{position:absolute; z-index:1; pointer-events:none;}
-  .ext-baston{top:20px; left:0; width:7px; height:124px; background:linear-gradient(180deg,#a87c50,#6a4828); border:1px solid #4a3018; border-radius:4px;}
-  .outfit-jesus .p-torso{background-color:#f4efe0; background-image:none; border-color:#c9bfa4;}
-  .outfit-jesus .p-torso::before{content:''; position:absolute; left:-3px; right:-3px; top:32px; height:9px; background:#b03030; border:1px solid #7a1f1f; border-radius:3px; z-index:2;}
+  .ext-baston{top:16px; left:-4px; width:7px; height:134px; background:linear-gradient(180deg,#a87c50,#6a4828); border:1px solid #4a3018; border-radius:4px;}
+  .outfit-jesus .p-torso{background-color:#f4efe0; border-color:#c9bfa4;}
   .outfit-jesus .p-leg{background-color:#f4efe0; border-color:#c9bfa4;}
   .outfit-jesus .p-leg::after{content:''; position:absolute; left:-3px; right:-3px; bottom:0; height:9px; background:#8a5a2a; border:1px solid #5a3a1a; border-radius:4px;}
-  .outfit-moises .p-torso{background-color:#8a6a3c; background-image:none; border-color:#5a4020;}
-  .outfit-moises .p-torso::before{content:''; position:absolute; left:-3px; right:-3px; top:32px; height:8px; background:#6a4a24; border:1px solid #4a3418; border-radius:3px; z-index:2;}
+  .outfit-moises .p-torso{background-color:#8a6a3c; border-color:#5a4020;}
   .outfit-moises .p-leg{background-color:#8a6a3c; border-color:#5a4020;}
   .outfit-moises .p-leg::after{content:''; position:absolute; left:-3px; right:-3px; bottom:0; height:9px; background:#8a5a2a; border:1px solid #5a3a1a; border-radius:4px;}
-  .outfit-elias .p-torso{background-color:#7a5a48; background-image:none; border-color:#4a3328;}
-  .outfit-elias .p-torso::before{content:''; position:absolute; top:-8px; left:-6px; right:-6px; height:26px; background:#5a3f32; border:2px solid #3a2820; border-radius:10px 10px 4px 4px; z-index:3;}
+  .outfit-elias .p-torso{background-color:#7a5a48; border-color:#4a3328;}
   .outfit-elias .p-leg{background-color:#4a3a30; border-color:#2a2018;}
-  .outfit-david .p-torso{background-color:#5a2a78; background-image:linear-gradient(180deg,#8a4ab0,#5a2a78); border-color:#3a1a50;}
-  .outfit-david .p-torso::before{content:''; position:absolute; left:-3px; right:-3px; bottom:-2px; height:7px; background:#e8c14a; border:1px solid #a8841a; z-index:2;}
-  .outfit-david .p-head::after{content:'👑'; position:absolute; top:-15px; left:0; right:0; text-align:center; font-size:22px; z-index:8;}
+  .outfit-david .p-torso{background-color:#5a2a78; border-color:#3a1a50;}
+  .outfit-david .p-head::after{content:'👑'; position:absolute; top:-13px; left:0; right:0; text-align:center; font-size:17px; z-index:8;}
   .outfit-david .p-leg{background-color:#4a2a5a; border-color:#2a1638;}
-  .outfit-ester .p-torso{background-color:#1a7870; background-image:linear-gradient(180deg,#2aa8a0,#1a7870); border-color:#0f5450;}
-  .outfit-ester .p-torso::before{content:''; position:absolute; left:-3px; right:-3px; bottom:-2px; height:7px; background:#e8c14a; border:1px solid #a8841a; z-index:2;}
-  .outfit-ester .p-head::after{content:'👑'; position:absolute; top:-15px; left:0; right:0; text-align:center; font-size:22px; z-index:8;}
+  .outfit-ester .p-torso{background-color:#1a7870; border-color:#0f5450;}
+  .outfit-ester .p-head::after{content:'👑'; position:absolute; top:-13px; left:0; right:0; text-align:center; font-size:17px; z-index:8;}
   .outfit-ester .p-leg{background-color:#1a8880; border-color:#0f5450;}
-  .outfit-rut .p-torso{background-color:#a8844a; background-image:linear-gradient(180deg,#c9a86a,#a8844a); border-color:#7a5f34;}
-  .outfit-rut .p-torso::after{content:'🌾'; position:absolute; right:-12px; top:22px; font-size:18px; z-index:3;}
+  .outfit-rut .p-torso{background-color:#a8844a; border-color:#7a5f34;}
   .outfit-rut .p-leg{background-color:#b0905c; border-color:#7a5f34;}
-  .outfit-raquel .p-torso{background-color:#4a78a8; background-image:linear-gradient(180deg,#7aa8d8,#4a78a8); border-color:#2f5478;}
+  .outfit-raquel .p-torso{background-color:#4a78a8; border-color:#2f5478;}
   .outfit-raquel .p-leg{background-color:#5a88b8; border-color:#2f5478;}
-  .outfit-maria .p-torso{background-color:#f2f0ea; background-image:none; border-color:#c8c4b8;}
-  .outfit-maria .p-torso::before{content:''; position:absolute; top:-7px; left:-8px; right:-8px; height:15px; background:#7a9ad8; border:2px solid #4a68a8; border-radius:8px; z-index:3;}
+  .outfit-maria .p-torso{background-color:#f2f0ea; border-color:#c8c4b8;}
   .outfit-maria .p-leg{background-color:#f2f0ea; border-color:#c8c4b8;}
+  .outfit-saulo .p-torso{background-color:#4a4a52; border-color:#2a2a30;}
+  .outfit-saulo .p-leg{background-color:#3a3a40; border-color:#202024;}
+  .outfit-pablo .p-torso{background-color:#e8dfc8; border-color:#b8ac8c;}
+  .outfit-pablo .p-leg{background-color:#e8dfc8; border-color:#b8ac8c;}
+  .outfit-jose .p-torso{background-color:#c9642a; border-color:#8a4318;}
+  .outfit-jose .p-leg{background-color:#d4a03a; border-color:#8a6a1c;}
 
   /* ---- Toda la Armadura de Dios (traje estrella) ---- */
-  .outfit-armadura-dios .p-torso{background-color:#d4af37; background-image:linear-gradient(180deg,#eedd82,#d4af37 45%,#8b6914); border:2px solid #6b4e0e; box-shadow:0 0 10px rgba(255,200,80,.4);}
-  .outfit-armadura-dios .p-torso::before{content:''; position:absolute; left:50%; top:6px; width:26px; height:26px; transform:translateX(-50%); background:radial-gradient(circle,#ffd700 40%,#b8860b 75%); border:2px solid #6b4e0e; border-radius:50%; z-index:2;}
-  .outfit-armadura-dios .p-torso::after{content:'🦁🦁'; position:absolute; bottom:1px; left:0; right:0; text-align:center; font-size:11px; letter-spacing:3px; z-index:2;}
-  .outfit-armadura-dios .p-leg{background-color:#c49a2a; background-image:linear-gradient(180deg,#e8c14a,#a67c1a); border-color:#6b4e0e;}
-  .outfit-armadura-dios .p-head::before{content:''; position:absolute; top:-3px; left:-4px; right:-4px; height:58%; background:linear-gradient(180deg,#eedd82,#c49a2a); border:2px solid #6b4e0e; border-radius:14px 14px 4px 4px; z-index:3;}
-  .outfit-armadura-dios .p-head::after{content:''; position:absolute; left:5px; right:5px; top:12px; height:6px; background:#1a1a1a; border-radius:3px; z-index:4; box-shadow:0 7px 0 #1a1a1a;}
-  .outfit-armadura-dios .p-arm-guard{background-color:#d4af37; border:2px solid #6b4e0e; border-radius:8px;}
-  .outfit-armadura-dios .p-arm-punch{background-color:#d4af37; border:2px solid #6b4e0e; border-radius:6px;}
-  .ext-espada{top:38px; right:2px; width:10px; height:92px; z-index:5; background:linear-gradient(180deg,#fff8dc,#ffd700 30%,#c0c0c0 70%,#8a8a8a); border:1px solid #6b4e0e; border-radius:3px;}
+  /* El casco CSS se quitó: tapaba la cara y no combinaba con el torso ilustrado.
+     Ahora la cabeza normal del personaje se ve, igual que en los demás trajes. */
+  .outfit-armadura-Dios .p-torso{border:none; box-shadow:0 0 10px rgba(255,200,80,.35);}
+  .outfit-armadura-Dios .p-leg{background-color:#c49a2a; background-image:linear-gradient(180deg,#e8c14a,#a67c1a); border-color:#8a6a14; border-radius:8px 8px 10px 10px;}
+  .outfit-armadura-Dios .p-arm-guard{background-color:#d4af37; border-color:#8a6a14; border-radius:10px;}
+  .outfit-armadura-Dios .p-arm-punch{background-color:#d4af37; border-color:#8a6a14; border-radius:8px;}
+  .ext-espada{top:30px; right:0; width:10px; height:102px; z-index:5; background:linear-gradient(180deg,#fff8dc,#ffd700 30%,#c0c0c0 70%,#8a8a8a); border:1px solid #6b4e0e; border-radius:3px;}
   .ext-espada::before{content:''; position:absolute; top:-16px; left:-8px; width:24px; height:36px; background:radial-gradient(circle at 50% 70%,#fffacd 0%,#ff8c00 45%,#ff4500 75%,transparent 100%); border-radius:50% 50% 45% 45%; animation:llama .45s infinite alternate; filter:blur(.5px);}
   .ext-espada::after{content:''; position:absolute; bottom:12px; left:-6px; width:22px; height:7px; background:linear-gradient(90deg,#8b6914,#ffd700,#8b6914); border:1px solid #6b4e0e; border-radius:3px;}
   @keyframes llama{from{transform:scaleY(.85);} to{transform:scaleY(1.15);}}
@@ -552,6 +573,7 @@
   <div class="avatar-card" id="avatarCard" onclick="openShop()">
     <div class="avatar-card-preview">
       <div class="fighter mini-avatar" id="mapAvatarPreview">
+        <div class="p-fullbody" id="mapAvatarFullbody"></div>
         <div class="p-hair" id="mapAvatarHair"></div>
         <div class="p-head"></div>
         <div class="p-torso"></div>
@@ -582,7 +604,9 @@
   </div>
   <div class="shop-scroll">
     <div class="shop-preview">
+      <div class="shop-preview-frame">
       <div class="fighter mini-avatar shop-avatar-big" id="shopAvatarPreview">
+        <div class="p-fullbody" id="shopAvatarFullbody"></div>
         <div class="p-hair" id="shopAvatarHair"></div>
         <div class="p-head"></div>
         <div class="p-torso"></div>
@@ -592,6 +616,7 @@
         <div class="p-leg back"></div>
         <div class="p-leg front"></div>
         <div class="p-leaf-skirt"></div>
+      </div>
       </div>
     </div>
     <h3 class="shop-section-title">Trajes</h3>
@@ -673,6 +698,7 @@
     </div>
     <div class="combatants">
       <div class="fighter" id="fighterPlayer">
+        <div class="p-fullbody" id="playerFullbody"></div>
         <div class="p-hair" id="playerHair"></div>
         <div class="p-head"></div>
         <div class="p-torso"></div>
@@ -682,7 +708,7 @@
         <div class="p-leg back"></div>
         <div class="p-leg front"></div>
         <div class="p-leaf-skirt"></div>
-        <div class="p-arm-guard"></div>
+        <div class="p-arm-guard" id="playerArmLeft"></div>
         <div class="p-arm-punch" id="playerArm"><div class="p-fist"></div></div>
       </div>
       <div class="impact-flash" id="impactFlash"></div>
@@ -832,7 +858,7 @@ const BOOKS = [
       {q:'¿Cómo se llamaba el jardín donde vivían Adán y Eva?', opts:['Edén','Canaán','Getsemaní','Sinaí'], correct:0}
     ],
     battle:[
-      {q:'¿Qué fruto le ofreció la serpiente a Eva?', opts:['El del árbol de la vida','El del árbol prohibido','Una granada','Un higo'], correct:1},
+      {q:'¿Quién fue la primera mujer creada por Dios?', opts:['Eva','Sara','Rebeca','Ester'], correct:0},
       {q:'¿Qué le dijo Dios a la serpiente como castigo?', opts:['Que volaría','Que se arrastraría sobre su vientre','Que hablaría siempre','Que viviría en el mar'], correct:1},
       {q:'¿Quién convenció a Eva de comer el fruto prohibido?', opts:['Adán','La serpiente','Un ángel','Caín'], correct:1}
     ]
@@ -8051,21 +8077,47 @@ const ACCESSORIES = [
   { id:'escudo', name:'Escudo de la fe', cost:200, cssClass:'acc-escudo', swatch:'#9aa8c0' },
 ];
 
+// Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
+// navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
+const BUILD_VERSION = '20260912-2';
+
+// Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
+// traje, el juego intenta cargar 'boy_<id>_fullbody.png' / 'girl_<id>_fullbody.png'
+// (y sus versiones '_punch' para la batalla). Si el archivo existe, lo usa. Si no,
+// cae de vuelta al sistema de piezas sueltas. Así, para agregar un traje nuevo con
+// imagen completa, solo hace falta subir el archivo con el nombre correcto — no
+// hay que tocar el código nunca más.
+const FULLBODY_CACHE = {};
+function fullbodyFileName(gender, outfitId, punch){
+  return gender + '_' + outfitId + '_fullbody' + (punch ? '_punch' : '') + '.png';
+}
+function checkFullbodyExists(url){
+  if(FULLBODY_CACHE[url] !== undefined) return Promise.resolve(FULLBODY_CACHE[url]);
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = () => { FULLBODY_CACHE[url] = true; resolve(true); };
+    img.onerror = () => { FULLBODY_CACHE[url] = false; resolve(false); };
+    img.src = url + '?' + BUILD_VERSION;
+  });
+}
 const AVATAR_PIECES = {
   boy: { head:'boy_head_full.png', torso:'boy_torso.png', armGuard:'boy_arm_guard.png', armPunch:'boy_arm_punch.png', legBack:'boy_leg_back.png', legFront:'boy_leg_front.png' },
   girl: { head:'girl_head_full.png', torso:'girl_torso.png', armGuard:'girl_arm_guard.png', armPunch:'girl_arm_punch.png', legBack:'girl_leg_back.png', legFront:'girl_leg_front.png' }
 };
 
 const PREMIUM_OUTFITS = [
-  { id:'armadura-dios', name:'Toda la Armadura de Dios', cssClass:'outfit-armadura-dios', extraClass:'ext-espada', hideArms:true, swatch:'#d4af37', price:9000 },
-  { id:'jesus', name:'Traje de Jesús', cssClass:'outfit-jesus', swatch:'#f4efe0', price:9000 },
-  { id:'moises', name:'Traje de Moisés', cssClass:'outfit-moises', extraClass:'ext-baston', swatch:'#8a6a3c', price:9000 },
-  { id:'elias', name:'Manto de Elías', cssClass:'outfit-elias', swatch:'#7a5a48', price:9000 },
-  { id:'david', name:'Traje del Rey David', cssClass:'outfit-david', swatch:'#8a4ab0', price:9000 },
-  { id:'ester', name:'Traje de la Reina Ester', cssClass:'outfit-ester', swatch:'#2aa8a0', price:9000 },
-  { id:'rut', name:'Traje de Rut', cssClass:'outfit-rut', swatch:'#c9a86a', price:9000 },
-  { id:'raquel', name:'Traje de Raquel', cssClass:'outfit-raquel', swatch:'#7aa8d8', price:9000 },
-  { id:'maria', name:'Traje de María', cssClass:'outfit-maria', swatch:'#f2f0ea', price:9000 },
+  { id:'armadura-Dios', name:'Toda la Armadura de Dios', cssClass:'outfit-armadura-Dios', extraClass:'ext-espada', hideArms:true, swatch:'#d4af37', price:9000, torsoImg:'outfit_armadura-Dios.png' },
+  { id:'jesus', name:'Traje de Jesús', cssClass:'outfit-jesus', swatch:'#f4efe0', price:9000, torsoImg:'outfit_jesus.png' },
+  { id:'moises', name:'Traje de Moisés', cssClass:'outfit-moises', extraClass:'ext-baston', swatch:'#8a6a3c', price:9000, torsoImg:'outfit_moises.png' },
+  { id:'elias', name:'Manto de Elías', cssClass:'outfit-elias', swatch:'#7a5a48', price:9000, torsoImg:'outfit_elias.png' },
+  { id:'david', name:'Traje del Rey David', cssClass:'outfit-david', swatch:'#8a4ab0', price:9000, torsoImg:'outfit_david.png' },
+  { id:'ester', name:'Traje de la Reina Ester', cssClass:'outfit-ester', swatch:'#2aa8a0', price:9000, torsoImg:'outfit_ester.png' },
+  { id:'rut', name:'Traje de Rut', cssClass:'outfit-rut', swatch:'#c9a86a', price:9000, torsoImg:'outfit_rut.png' },
+  { id:'raquel', name:'Traje de Raquel', cssClass:'outfit-raquel', swatch:'#7aa8d8', price:9000, torsoImg:'outfit_raquel.png' },
+  { id:'maria', name:'Traje de María', cssClass:'outfit-maria', swatch:'#f2f0ea', price:9000, torsoImg:'outfit_maria.png' },
+  { id:'saulo', name:'Saulo de Tarso', cssClass:'outfit-saulo', swatch:'#4a4a52', price:9000 },
+  { id:'pablo', name:'Apóstol Pablo', cssClass:'outfit-pablo', swatch:'#e8dfc8', price:9000 },
+  { id:'jose', name:'Traje de José', cssClass:'outfit-jose', swatch:'#c9642a', price:9000 },
 ];
 
 function applyOutfitVisuals(){
@@ -8081,15 +8133,46 @@ function applyOutfitVisuals(){
     const setPiece = (sel, url) => {
       const node = el.querySelector(sel);
       if(!node) return;
-      if(url){ node.style.backgroundImage = 'url("' + url + '")'; node.style.border = 'none'; }
+      if(url){ node.style.backgroundImage = 'url("' + url + '?' + BUILD_VERSION + '")'; node.style.border = 'none'; }
       else { node.style.backgroundImage = ''; node.style.border = ''; }
     };
     setPiece('.p-head', set.head);
     setPiece('.p-arm-guard', outfit.hideArms ? null : set.armGuard);
     setPiece('.p-arm-punch', outfit.hideArms ? null : set.armPunch);
-    setPiece('.p-torso', isLeaves ? set.torso : null);
+    setPiece('.p-torso', isLeaves ? set.torso : (outfit.torsoImg || null));
     setPiece('.p-leg.back', isLeaves ? set.legBack : null);
     setPiece('.p-leg.front', isLeaves ? set.legFront : null);
+    // Cuerpo completo en una sola imagen: el juego intenta cargar automáticamente
+    // 'boy_<traje>_fullbody.png' / 'girl_<traje>_fullbody.png'. Si existe, la usa;
+    // si no, cae de vuelta a las piezas sueltas — sin tocar código nunca más.
+    const genderKey = state.avatar === '👧' ? 'girl' : 'boy';
+    const fullbodyCandidate = fullbodyFileName(genderKey, outfit.id, false);
+    const fullbodyNode = el.querySelector('.p-fullbody');
+    if(fullbodyNode){
+      const known = FULLBODY_CACHE[fullbodyCandidate];
+      const showFullbody = known === true;
+      if(showFullbody){
+        fullbodyNode.style.display = 'block';
+        fullbodyNode.style.backgroundImage = 'url("' + fullbodyCandidate + '?' + BUILD_VERSION + '")';
+      }else{
+        fullbodyNode.style.display = 'none';
+      }
+      ['.p-hair','.p-head','.p-torso','.p-leg','.p-arm-guard','.p-arm-punch'].forEach(sel=>{
+        el.querySelectorAll(sel).forEach(n=>{ n.style.visibility = showFullbody ? 'hidden' : ''; });
+      });
+      if(known === undefined){
+        checkFullbodyExists(fullbodyCandidate).then(exists=>{
+          // Solo volver a aplicar si el traje/género siguen siendo los mismos
+          const stillRelevant = state.equippedOutfit === outfit.id && (state.avatar === '👧' ? 'girl' : 'boy') === genderKey;
+          if(exists && stillRelevant) applyOutfitVisuals();
+        });
+      }
+      // Pre-cargar en silencio la variante de golpe, para que esté lista cuando
+      // el jugador entre a una batalla con este traje puesto.
+      if(showFullbody){
+        checkFullbodyExists(fullbodyFileName(genderKey, outfit.id, true));
+      }
+    }
     el.querySelectorAll('.acc').forEach(n=> n.remove());
     ACCESSORIES.forEach(acc=>{
       if(!state.equippedAccessories.includes(acc.id)) return;
@@ -8136,7 +8219,7 @@ function renderShop(){
     else if(owned){ btnLabel = 'Equipar'; btnClass += ' owned'; }
     else { btnLabel = outfit.cost + ' 🪙'; disabled = state.coins < outfit.cost; }
     card.innerHTML = `
-      <div class="outfit-swatch" style="background:${outfit.swatch};"></div>
+      <div class="outfit-swatch" style="${outfitThumbStyle(outfit)}"></div>
       <div class="outfit-card-body">
         <div class="outfit-card-name">${outfit.name}</div>
         <div class="outfit-card-cost">${owned ? (equipped ? 'Equipado' : 'Ya lo tienes') : 'Cuesta ' + outfit.cost + ' monedas'}</div>
@@ -8148,6 +8231,16 @@ function renderShop(){
   });
   renderAccessories();
   renderPremiumOutfits();
+}
+
+function outfitThumbStyle(outfit){
+  // Miniatura: intenta mostrar un recorte de la imagen de cuerpo completo del
+  // traje (enfocado arriba, cara/torso). Si esa imagen no existe, el navegador
+  // simplemente no la carga y queda visible el color de respaldo (swatch) —
+  // no hace falta comprobar nada por separado.
+  const genderKey = state.avatar === '👧' ? 'girl' : 'boy';
+  const url = fullbodyFileName(genderKey, outfit.id, false);
+  return `background-color:${outfit.swatch}; background-image:url('${url}?${BUILD_VERSION}'); background-repeat:no-repeat; background-size:auto 230%; background-position:center 8%;`;
 }
 
 function renderAccessories(){
@@ -8210,7 +8303,7 @@ function renderPremiumOutfits(){
     else if(owned) btnLabel = 'Equipar', btnClass += ' owned';
     else btnLabel = '💳 $' + outfit.price.toLocaleString('es-CO');
     card.innerHTML = `
-      <div class="outfit-swatch" style="background:${outfit.swatch};"></div>
+      <div class="outfit-swatch" style="${outfitThumbStyle(outfit)}"></div>
       <div class="outfit-card-body">
         <div class="outfit-card-name">⭐ ${outfit.name}</div>
         <div class="outfit-card-cost">${owned ? (equipped ? 'Equipado' : 'Ya lo tienes') : 'Compra con dinero real'}</div>
@@ -8283,7 +8376,7 @@ function premiumAction(id){
     return;
   }
   if(window.self !== window.top){
-    alert('La compra solo funciona en el sitio publicado, no en una vista previa embebida.');
+    alert('La compra solo funciona en la app publicada, no en la vista previa.');
     return;
   }
   showAdultPinModal(id);
@@ -8302,7 +8395,7 @@ async function startPremiumCheckout(id){
     if(!res.ok || !data.url) throw new Error(data.error || 'No se pudo iniciar el pago');
     window.location.href = data.url;
   }catch(err){
-    alert('No se pudo iniciar la compra. Detalle: ' + err.message);
+    alert('La compra solo funciona en la app publicada. Detalle: ' + err.message);
     buttons.forEach(b=>{ b.textContent = b.dataset.oldLabel; b.disabled = false; });
   }
 }
@@ -8722,22 +8815,47 @@ function triggerImpactFx(){
   spawnDust(rect.width/2, rect.height/2);
 }
 
+let lastPunchArm = null; // alterna el brazo que golpea: el derecho golpea primero
 function resolveBattleTurn(correct){
   const playerEl = document.getElementById('fighterPlayer');
   const bossEl = document.getElementById('fighterBoss');
   const playerArm = document.getElementById('playerArm');
+  const armLeft = document.getElementById('playerArmLeft');
+  const playerFullbody = document.getElementById('playerFullbody');
   const bossNeck = document.getElementById('bossNeck');
   vibrate([120]);
+  const useRightArm = lastPunchArm !== 'right';
+  lastPunchArm = useRightArm ? 'right' : 'left';
+  // Si el traje equipado tiene imagen de cuerpo completo para este género, el golpe
+  // se muestra cambiando a la imagen de "golpeando" (si existe) y luego regresa a la de reposo.
+  const ALL_OUTFITS_BT = OUTFITS.concat(PREMIUM_OUTFITS);
+  const currentOutfit = ALL_OUTFITS_BT.find(o=>o.id===state.equippedOutfit) || OUTFITS[0];
+  const genderKeyBT = state.avatar === '👧' ? 'girl' : 'boy';
+  const restCandidateBT = fullbodyFileName(genderKeyBT, currentOutfit.id, false);
+  const punchCandidateBT = fullbodyFileName(genderKeyBT, currentOutfit.id, true);
+  const restUrlBT = FULLBODY_CACHE[restCandidateBT] === true ? restCandidateBT : null;
+  const punchUrlBT = FULLBODY_CACHE[punchCandidateBT] === true ? punchCandidateBT : null;
+  const usingFullbody = !!restUrlBT && playerFullbody && playerFullbody.style.display !== 'none';
   if(correct){
     battleState.wins++;
-    playerEl.classList.add('attack');
-    playerArm.classList.add('punching');
+    // El cuerpo (cabeza, torso, piernas) queda fijo: solo se anima el brazo que golpea
+    if(usingFullbody){
+      if(punchUrlBT){
+        playerFullbody.style.backgroundImage = 'url("' + punchUrlBT + '?' + BUILD_VERSION + '")';
+      }else{
+        // Sin pose de golpe dedicada para este traje: el cuerpo entero se lanza
+        // hacia adelante como impacto, en vez de solo mover el brazo.
+        playerEl.classList.add('attack');
+      }
+    }else{
+      if(useRightArm){ playerArm.classList.add('punching'); } else { armLeft.classList.add('punching'); }
+    }
     setTimeout(()=>{
       bossEl.classList.add('hit');
       sfxPunch();
       triggerImpactFx();
       vibrate([100]);
-    }, 160);
+    }, 230);
     battleState.bossHp = Math.max(0, battleState.bossHp - 50);
     document.getElementById('hpBoss').style.width = battleState.bossHp+'%';
   } else {
@@ -8755,6 +8873,10 @@ function resolveBattleTurn(correct){
   }
   setTimeout(()=>{
     playerArm.classList.remove('punching');
+    armLeft.classList.remove('punching');
+    if(usingFullbody && punchUrlBT){
+      playerFullbody.style.backgroundImage = 'url("' + restUrlBT + '?' + BUILD_VERSION + '")';
+    }
     if(bossNeck) bossNeck.classList.remove('biting');
   }, 500);
   setTimeout(()=>{
