@@ -4,7 +4,7 @@
 
 // Debe coincidir EXACTO con la lista PREMIUM_OUTFITS del HTML (id y price).
 const PREMIUM_OUTFITS = {
-  'armadura-dios': 9000,
+  'armadura-Dios': 9000,
   'jesus': 9000,
   'moises': 9000,
   'elias': 9000,
