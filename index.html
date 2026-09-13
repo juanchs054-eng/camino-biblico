@@ -3158,7 +3158,9 @@ function renderPremiumOutfits(){
     // no se muestra en la tienda (evita vender un traje que se vería como
     // un bloque de color). Si ya lo compró, se sigue mostrando siempre.
     const hasArt = FULLBODY_CACHE[fullbodyFileName(genderKey, outfit.id, false)];
-    if(!owned && hasArt === false) return;
+    // No mostrar el traje si no existe imagen para el género actual, tenga o no
+    // el jugador ya comprado ese traje (evita ver el cuerpo a medias/roto).
+    if(hasArt === false) return;
     const equipped = state.equippedOutfit === outfit.id;
     const card = document.createElement('div');
     card.className = 'outfit-card' + (equipped ? ' equipped' : '');
@@ -3868,6 +3870,12 @@ function updateGenderButtons(){
 function switchGender(av){
   if(state.avatar === av) return;
   state.avatar = av;
+  // Si el traje puesto no tiene imagen para el género nuevo, volver a la
+  // túnica de hojas (la única que siempre tiene arte para ambos géneros),
+  // para que el personaje nunca se vea a medias/roto.
+  const genderKey = av === '👧' ? 'girl' : 'boy';
+  const hasArt = FULLBODY_CACHE[fullbodyFileName(genderKey, state.equippedOutfit, false)];
+  if(hasArt === false) state.equippedOutfit = 'hojas';
   document.getElementById('mapAvatarIcon').textContent = state.avatar;
   applyOutfitVisuals();
   updateGenderButtons();
