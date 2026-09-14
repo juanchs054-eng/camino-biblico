@@ -4,18 +4,18 @@
 
 // Debe coincidir EXACTO con la lista PREMIUM_OUTFITS del HTML (id y price).
 const PREMIUM_OUTFITS = {
-  'armadura-Dios': 9000,
-  'jesus': 9000,
+  'armadura-Dios': 14000,
+  'jesus': 12000,
   'moises': 9000,
   'elias': 9000,
   'david': 9000,
   'ester': 9000,
   'rut': 9000,
-  'raquel': 9000,
-  'maria': 9000,
-  'saulo': 9000,
-  'pablo': 9000,
-  'jose': 900,
+  'raquel': 6000,
+  'maria': 6000,
+  'saulo': 6000,
+  'pablo': 4000,
+  'jose': 2000,
 };
 
 async function sha256Hex(text) {
