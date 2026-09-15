@@ -73,10 +73,17 @@ export async function onRequestPost({ request, env }) {
     }
 
     if (!wompiData) {
+      // El diagnóstico va DENTRO del texto de error para que el juego lo muestre
+      // en la alerta, sin necesidad de cambiar el index.html.
+      const detalle = attempts
+        .map((a) => `${a.host.replace('https://', '')} -> ${a.status || a.error}`)
+        .join(' | ');
       return Response.json(
         {
-          error: 'Wompi no encontró la transacción en ninguno de los dos ambientes',
-          // Diagnóstico: con esto sabes si el problema es la llave o el id.
+          error:
+            'Wompi no encontró la transacción. ' +
+            `Llave: ${keyHint}. ID: "${id}" (${id.length} chars). ` +
+            `Intentos: ${detalle}`,
           keyHint,
           idConsultado: id,
           intentos: attempts,
