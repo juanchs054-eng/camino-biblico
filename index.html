@@ -128,6 +128,20 @@
     background:#1a1e3d; border:1px solid #33375c;
   }
   .outfit-card.equipped{border-color:var(--gold); background:#232a52;}
+  .bundle-card{
+    display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:16px;
+    background:linear-gradient(135deg,#3a2a6a,#1a1440); border:2px solid var(--gold);
+    box-shadow:0 0 18px rgba(232,182,74,0.25); margin-bottom:12px;
+  }
+  .bundle-badge{font-size:0.72rem; font-weight:800; color:#1a1206; background:var(--gold);
+    display:inline-block; padding:3px 10px; border-radius:20px; letter-spacing:.5px; width:fit-content;}
+  .bundle-title{font-size:1.05rem; font-weight:800; color:#fff;}
+  .bundle-desc{font-size:0.85rem; color:#d8d4ee; line-height:1.35;}
+  .bundle-price-row{display:flex; align-items:center; justify-content:space-between; margin-top:4px;}
+  .bundle-price-old{font-size:0.8rem; color:#9d97c4; text-decoration:line-through;}
+  .bundle-price-new{font-size:1.2rem; font-weight:800; color:var(--gold);}
+  .bundle-buy-btn{background:var(--gold); color:#1a1206; border:none; border-radius:12px; padding:12px 18px; font-weight:800; font-size:0.95rem; cursor:pointer;}
+  .bundle-buy-btn:disabled{opacity:0.6;}
   .outfit-swatch{width:40px; height:40px; border-radius:10px; flex-shrink:0; border:2px solid rgba(255,255,255,0.15); cursor:pointer;}
   .outfit-card-body{flex:1;}
   .outfit-card-name{font-weight:700; font-size:0.92rem; cursor:pointer;}
@@ -382,6 +396,8 @@
   .pin-sub{color:#d8d3c3; font-size:.82rem; line-height:1.4; margin-bottom:14px;}
   .pin-inputs{display:flex; gap:10px; justify-content:center; margin-bottom:6px;}
   .pin-input{width:50px; height:58px; text-align:center; font-size:1.5rem; background:#14120c; color:#e8b64a; border:2px solid #6b5a2a; border-radius:10px; outline:none;}
+  .age-input{width:120px; height:54px; text-align:center; font-size:1.4rem; background:#14120c; color:#e8b64a; border:2px solid #6b5a2a; border-radius:10px; outline:none; margin:10px auto; display:block;}
+  .age-countdown{font-size:2rem; font-weight:800; color:var(--gold); margin:10px 0;}
   .pin-input:focus{border-color:#e8b64a;}
   .pin-error{color:#ff9b7a; font-size:.8rem; min-height:1.3em; margin:4px 0 10px;}
   .pin-btn-cancel{background:#3a3020; color:#d8d3c3; border:2px solid #6b5a2a; border-radius:10px; padding:8px 18px; font-size:.85rem;}
@@ -657,22 +673,23 @@
     <h3 class="shop-section-title">Accesorios</h3>
     <div class="outfit-list" id="accessoryList"></div>
     <h3 class="shop-section-title">⭐ Trajes Premium</h3>
+    <div id="bundleOfferBox"></div>
     <div class="outfit-list" id="premiumList"></div>
   </div>
 </div>
 
-<!-- ============ VERIFICACIÓN DE ADULTO (compras premium) ============ -->
+<!-- ============ VERIFICACIÓN DE EDAD (compras premium) ============ -->
 <div class="pin-overlay" id="adultPinModal">
   <div class="pin-box">
-    <div class="pin-title">🔒 Pídele a un adulto que continúe</div>
-    <div class="pin-sub">Esta compra es con dinero real (PSE o tarjeta). Un adulto debe ingresar el PIN para autorizarla.</div>
-    <div class="pin-inputs">
-      <input class="pin-input" type="password" maxlength="1" inputmode="numeric" autocomplete="off">
-      <input class="pin-input" type="password" maxlength="1" inputmode="numeric" autocomplete="off">
-      <input class="pin-input" type="password" maxlength="1" inputmode="numeric" autocomplete="off">
-      <input class="pin-input" type="password" maxlength="1" inputmode="numeric" autocomplete="off">
-    </div>
+    <div class="pin-title">🔞 ¿Qué edad tienes?</div>
+    <div class="pin-sub" id="ageSub">Esta compra es con dinero real (PSE o tarjeta). Necesitamos confirmar tu edad antes de continuar.</div>
+    <input class="age-input" id="ageInput" type="number" inputmode="numeric" min="1" max="120" placeholder="Tu edad" autocomplete="off">
     <div class="pin-error" id="pinError"></div>
+    <div id="ageWarningBox" style="display:none;">
+      <div class="pin-sub">Dile a un adulto que te ayude a realizar el pago.</div>
+      <div id="ageCountdown" class="age-countdown">30</div>
+    </div>
+    <button class="pin-btn-cancel" id="ageConfirmBtn">Continuar</button>
     <button class="pin-btn-cancel" id="pinCancel">Cancelar</button>
   </div>
 </div>
@@ -2975,12 +2992,48 @@ const PREMIUM_OUTFITS = [
   { id:'david', name:'Traje del Rey David', cssClass:'outfit-david', swatch:'#8a4ab0', price:9000, torsoImg:'outfit_david.png' },
   { id:'ester', name:'Traje de la Reina Ester', cssClass:'outfit-ester', swatch:'#2aa8a0', price:9000, torsoImg:'outfit_ester.png' },
   { id:'rut', name:'Traje de Rut', cssClass:'outfit-rut', swatch:'#c9a86a', price:9000, torsoImg:'outfit_rut.png' },
-  { id:'raquel', name:'Traje de Raquel', cssClass:'outfit-raquel', swatch:'#7aa8d8', price:6000, torsoImg:'outfit_raquel.png' },
+  { id:'raquel', name:'Traje de Raquel', cssClass:'outfit-raquel', swatch:'#7aa8d8', price:7000, torsoImg:'outfit_raquel.png' },
   { id:'maria', name:'Traje de María', cssClass:'outfit-maria', swatch:'#f2f0ea', price:6000, torsoImg:'outfit_maria.png' },
   { id:'saulo', name:'Saulo de Tarso', cssClass:'outfit-saulo', swatch:'#4a4a52', price:6000 },
   { id:'pablo', name:'Apóstol Pablo', cssClass:'outfit-pablo', swatch:'#e8dfc8', price:4000 },
   { id:'jose', name:'Traje de José', cssClass:'outfit-jose', swatch:'#c9642a', price:2000 },
 ];
+
+// Paquete "Todo Incluido": un solo pago que desbloquea los 12 trajes premium
+// y los 66 libros de golpe. El precio del servidor (functions/api/premium_checkout.js)
+// debe coincidir con este número.
+const BUNDLE_PRODUCT = { id:'todo-incluido', name:'Paquete Todo Incluido', price:39900 };
+
+function renderBundleOffer(){
+  const box = document.getElementById('bundleOfferBox');
+  if(!box) return;
+  const allOwned = PREMIUM_OUTFITS.every(o => state.unlockedPremium.includes(o.id))
+    && state.unlockedBook >= BOOKS.length - 1;
+  const fullPrice = PREMIUM_OUTFITS.reduce((sum,o)=>sum+o.price,0);
+  if(allOwned){
+    box.innerHTML = `
+      <div class="bundle-card">
+        <span class="bundle-badge">✅ YA LO TIENES</span>
+        <div class="bundle-title">Paquete Todo Incluido</div>
+        <div class="bundle-desc">Ya desbloqueaste todos los trajes y todos los libros. ¡Disfruta la aventura completa!</div>
+      </div>`;
+    return;
+  }
+  box.innerHTML = `
+    <div class="bundle-card">
+      <span class="bundle-badge">⭐ MEJOR OFERTA</span>
+      <div class="bundle-title">Paquete Todo Incluido</div>
+      <div class="bundle-desc">Desbloquea los 12 trajes premium y los 66 libros de la Biblia de una sola vez.</div>
+      <div class="bundle-price-row">
+        <div>
+          <div class="bundle-price-old">$${fullPrice.toLocaleString('es-CO')}</div>
+          <div class="bundle-price-new">$${BUNDLE_PRODUCT.price.toLocaleString('es-CO')}</div>
+        </div>
+        <button class="bundle-buy-btn" id="bundleBuyBtn">💳 Comprar todo</button>
+      </div>
+    </div>`;
+  document.getElementById('bundleBuyBtn').onclick = ()=> premiumAction(BUNDLE_PRODUCT.id);
+}
 
 function applyOutfitVisuals(){
   const ALL_OUTFITS = OUTFITS.concat(PREMIUM_OUTFITS);
@@ -3153,6 +3206,7 @@ function buyOrToggleAccessory(id){
 }
 
 function renderPremiumOutfits(){
+  renderBundleOffer();
   const list = document.getElementById('premiumList');
   list.innerHTML = '';
   const genderKey = state.avatar === '👧' ? 'girl' : 'boy';
@@ -3189,59 +3243,82 @@ function renderPremiumOutfits(){
   });
 }
 
-// 🔒 PIN de adulto para autorizar compras con dinero real.
-// Solo el adulto lo conoce y lo cambia en esta línea. NO se muestra en ninguna pantalla del juego.
-/* El PIN nunca se guarda en texto plano aquí: solo su huella digital (hash SHA-256).
-   Así, aunque alguien vea el código fuente, no puede leer el PIN directamente. */
-const ADULT_PIN_HASH = 'ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf';
-async function hashPin(pin){
-  const enc = new TextEncoder().encode(pin);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-const pinInputs = [...document.querySelectorAll('.pin-input')];
+// 🔞 Verificación de edad para autorizar compras con dinero real.
+// Ya no se usa PIN: solo se pregunta la edad. Si es menor de 18, se le pide
+// que busque ayuda de un adulto y debe esperar 30 segundos para volver a intentar.
 let pendingPremiumId = null;
+let ageCountdownInterval = null;
 
 function showAdultPinModal(outfitId){
   pendingPremiumId = outfitId;
-  document.getElementById('pinError').textContent = '';
-  pinInputs.forEach(i => { i.value = ''; });
+  resetAgeGate();
   document.getElementById('adultPinModal').classList.add('show');
-  pinInputs[0].focus();
+  document.getElementById('ageInput').focus();
 }
 function hideAdultPinModal(){
   document.getElementById('adultPinModal').classList.remove('show');
   pendingPremiumId = null;
+  clearAgeCountdown();
 }
-async function checkAdultPin(){
-  const entered = pinInputs.map(i => i.value).join('');
-  if(entered.length < 4) return;
-  const enteredHash = await hashPin(entered);
-  if(enteredHash === ADULT_PIN_HASH){
+function clearAgeCountdown(){
+  if(ageCountdownInterval){ clearInterval(ageCountdownInterval); ageCountdownInterval = null; }
+}
+function resetAgeGate(){
+  clearAgeCountdown();
+  const ageInput = document.getElementById('ageInput');
+  ageInput.value = '';
+  ageInput.style.display = '';
+  document.getElementById('ageConfirmBtn').style.display = '';
+  document.getElementById('ageWarningBox').style.display = 'none';
+  document.getElementById('pinError').textContent = '';
+}
+function confirmAge(){
+  const age = parseInt(document.getElementById('ageInput').value, 10);
+  if(isNaN(age) || age <= 0){
+    document.getElementById('pinError').textContent = 'Escribe tu edad para continuar.';
+    return;
+  }
+  if(age >= 18){
     const id = pendingPremiumId;
     hideAdultPinModal();
     if(id) startPremiumCheckout(id);
   }else{
-    document.getElementById('pinError').textContent = 'PIN incorrecto, pídele ayuda a un adulto';
-    pinInputs.forEach(i => { i.value = ''; });
-    pinInputs[0].focus();
+    // Menor de edad: mostrar aviso y arrancar el cronómetro de 30 segundos.
+    document.getElementById('ageInput').style.display = 'none';
+    document.getElementById('ageConfirmBtn').style.display = 'none';
+    document.getElementById('pinError').textContent = '';
+    document.getElementById('ageWarningBox').style.display = 'block';
+    let secondsLeft = 30;
+    const countdownEl = document.getElementById('ageCountdown');
+    countdownEl.textContent = secondsLeft;
+    clearAgeCountdown();
+    ageCountdownInterval = setInterval(()=>{
+      secondsLeft--;
+      countdownEl.textContent = secondsLeft;
+      if(secondsLeft <= 0){
+        resetAgeGate();
+      }
+    }, 1000);
   }
 }
-pinInputs.forEach((inp, idx) => {
-  inp.addEventListener('input', () => {
-    inp.value = inp.value.replace(/[^0-9]/g, '').slice(0, 1);
-    if(inp.value && idx < pinInputs.length - 1) pinInputs[idx + 1].focus();
-    if(pinInputs.every(i => i.value)) checkAdultPin();
-  });
-  inp.addEventListener('keydown', (e) => {
-    if(e.key === 'Backspace' && !inp.value && idx > 0) pinInputs[idx - 1].focus();
-    if(e.key === 'Enter') checkAdultPin();
-  });
+document.getElementById('ageConfirmBtn').onclick = confirmAge;
+document.getElementById('ageInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') confirmAge();
 });
 document.getElementById('pinCancel').onclick = hideAdultPinModal;
 
 function premiumAction(id){
+  if(id === BUNDLE_PRODUCT.id){
+    const allOwned = PREMIUM_OUTFITS.every(o => state.unlockedPremium.includes(o.id))
+      && state.unlockedBook >= BOOKS.length - 1;
+    if(allOwned) return; // ya lo tiene todo, no hay nada que comprar
+    if(window.self !== window.top){
+      alert('La compra solo funciona en la app publicada, no en la vista previa.');
+      return;
+    }
+    showAdultPinModal(id);
+    return;
+  }
   if(state.unlockedPremium.includes(id)){
     state.equippedOutfit = id;
     applyOutfitVisuals();
@@ -3299,12 +3376,21 @@ async function checkPremiumReturn(){
       throw new Error(msg);
     }
     if(data.paid && data.outfitId){
-      if(!state.unlockedPremium.includes(data.outfitId)) state.unlockedPremium.push(data.outfitId);
-      state.equippedOutfit = data.outfitId;
-      saveGame();
-      applyOutfitVisuals();
-      alert('⭐ ¡Traje premium desbloqueado y equipado! ¡Gracias por tu compra!');
-      openShop();
+      if(data.outfitId === BUNDLE_PRODUCT.id){
+        PREMIUM_OUTFITS.forEach(o=>{ if(!state.unlockedPremium.includes(o.id)) state.unlockedPremium.push(o.id); });
+        state.unlockedBook = BOOKS.length - 1;
+        saveGame();
+        applyOutfitVisuals();
+        alert('🎉 ¡Paquete completo desbloqueado! Todos los trajes y todos los libros están disponibles.');
+        openShop();
+      }else{
+        if(!state.unlockedPremium.includes(data.outfitId)) state.unlockedPremium.push(data.outfitId);
+        state.equippedOutfit = data.outfitId;
+        saveGame();
+        applyOutfitVisuals();
+        alert('⭐ ¡Traje premium desbloqueado y equipado! ¡Gracias por tu compra!');
+        openShop();
+      }
     }else if(data.status === 'PENDING'){
       alert('Tu pago está en proceso. Vuelve a abrir la tienda en unos segundos.');
     }else{
