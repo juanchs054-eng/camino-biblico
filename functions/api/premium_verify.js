@@ -19,50 +19,67 @@ export async function onRequestPost({ request, env }) {
 
     // Wompi documenta consultar el estado de una transacción usando la LLAVE PÚBLICA
     // (no la privada, que es solo para operaciones que crean/modifican datos).
-    const publicKey = env.WOMPI_PUBLIC_KEY;
+    // .trim() es importante: al copiar/pegar la llave es muy fácil arrastrar un espacio
+    // o un salto de línea invisible, y Wompi entonces no reconoce al comercio.
+    const publicKey = (env.WOMPI_PUBLIC_KEY || '').trim();
     if (!publicKey) {
       return Response.json({ error: 'Falta configurar WOMPI_PUBLIC_KEY en Cloudflare' }, { status: 500 });
     }
 
+    // Pista de diagnóstico que NO revela la llave: solo el prefijo y la longitud.
+    const keyHint = publicKey.slice(0, 9) + '…(' + publicKey.length + ' chars)';
+
     // Sandbox y producción son API COMPLETAMENTE distintas en Wompi, con dominios
-    // distintos. Elegimos el dominio según el prefijo de la llave configurada.
-    const wompiHost = publicKey.startsWith('pub_test_')
+    // distintos. Probamos primero el que corresponde al prefijo de la llave, pero si
+    // ahí no aparece la transacción intentamos el otro, para que una llave mal
+    // configurada nunca haga que un pago real quede sin entregar.
+    const primaryHost = publicKey.startsWith('pub_test_')
+      ? 'https://sandbox.wompi.co'
+      : 'https://production.wompi.co';
+    const secondaryHost = primaryHost === 'https://production.wompi.co'
       ? 'https://sandbox.wompi.co'
       : 'https://production.wompi.co';
 
-    let wompiRes;
-    try {
-      wompiRes = await fetch(`${wompiHost}/v1/transactions/${transactionId}`, {
-        headers: { Authorization: `Bearer ${publicKey}` },
-      });
-    } catch (fetchErr) {
-      return Response.json(
-        { error: 'No se pudo conectar con Wompi: ' + fetchErr.message },
-        { status: 502 }
-      );
+    const id = String(transactionId).trim();
+    const attempts = [];
+    let wompiData = null;
+    let usedHost = null;
+
+    for (const host of [primaryHost, secondaryHost]) {
+      let res;
+      try {
+        res = await fetch(`${host}/v1/transactions/${encodeURIComponent(id)}`, {
+          headers: { Authorization: `Bearer ${publicKey}` },
+        });
+      } catch (fetchErr) {
+        attempts.push({ host, error: 'No se pudo conectar: ' + fetchErr.message });
+        continue;
+      }
+
+      const rawText = await res.text();
+
+      if (res.ok) {
+        try {
+          wompiData = JSON.parse(rawText);
+          usedHost = host;
+          break;
+        } catch {
+          attempts.push({ host, status: res.status, error: 'Respuesta no es JSON', body: rawText.slice(0, 200) });
+          continue;
+        }
+      }
+
+      attempts.push({ host, status: res.status, body: rawText.slice(0, 200) });
     }
 
-    const rawText = await wompiRes.text();
-
-    if (!wompiRes.ok) {
+    if (!wompiData) {
       return Response.json(
         {
-          error: 'Wompi respondió con error al consultar la transacción',
-          wompiStatus: wompiRes.status,
-          wompiBody: rawText.slice(0, 500), // recorte por si es HTML largo
-        },
-        { status: 502 }
-      );
-    }
-
-    let wompiData;
-    try {
-      wompiData = JSON.parse(rawText);
-    } catch {
-      return Response.json(
-        {
-          error: 'La respuesta de Wompi no fue JSON válido',
-          wompiBody: rawText.slice(0, 500),
+          error: 'Wompi no encontró la transacción en ninguno de los dos ambientes',
+          // Diagnóstico: con esto sabes si el problema es la llave o el id.
+          keyHint,
+          idConsultado: id,
+          intentos: attempts,
         },
         { status: 502 }
       );
@@ -77,9 +94,9 @@ export async function onRequestPost({ request, env }) {
     const outfitId = match ? match[1] : null;
 
     if (status === 'APPROVED' && outfitId) {
-      return Response.json({ paid: true, outfitId, status });
+      return Response.json({ paid: true, outfitId, status, host: usedHost });
     }
-    return Response.json({ paid: false, status: status || 'UNKNOWN', reference });
+    return Response.json({ paid: false, status: status || 'UNKNOWN', reference, host: usedHost });
   } catch (err) {
     return Response.json({ error: 'Error interno: ' + (err?.message || String(err)) }, { status: 500 });
   }
