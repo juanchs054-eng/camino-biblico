@@ -485,6 +485,46 @@
   #screen-result h2{color:var(--gold); font-size:1.6rem;}
   .coins-earned{font-size:2rem; color:var(--gold); font-weight:800; margin:10px 0 26px;}
 
+  /* ============ GRAN FINAL (al vencer Apocalipsis) ============ */
+  #screen-finale{
+    align-items:center; justify-content:center; text-align:center; padding:34px 26px;
+    background:radial-gradient(circle at 50% 22%, #2a2160 0%, #0b0d1a 75%);
+    position:relative; overflow:hidden;
+  }
+  #confettiCanvas{
+    position:absolute; inset:0; width:100%; height:100%; z-index:1; pointer-events:none;
+  }
+  .finale-content{
+    position:relative; z-index:2; max-width:440px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .finale-crown{
+    font-size:3.2rem; margin-bottom:8px;
+    animation: finaleFloat 2.2s ease-in-out infinite;
+    filter:drop-shadow(0 0 16px rgba(232,182,74,0.6));
+  }
+  @keyframes finaleFloat{
+    0%,100%{transform:translateY(0);}
+    50%{transform:translateY(-10px);}
+  }
+  .finale-title{
+    color:var(--gold); font-size:1.9rem; margin:4px 0 16px;
+    text-shadow:0 0 18px rgba(232,182,74,0.55);
+    animation: finalePop .7s ease;
+  }
+  @keyframes finalePop{
+    0%{transform:scale(0.4); opacity:0;}
+    70%{transform:scale(1.08); opacity:1;}
+    100%{transform:scale(1); opacity:1;}
+  }
+  .finale-message{
+    font-size:1rem; line-height:1.6; color:var(--parchment); margin:0 0 22px;
+  }
+  .finale-signature{
+    font-size:0.94rem; color:#cbb0ff; margin:0 0 28px; line-height:1.5;
+  }
+  .finale-signature strong{ color:var(--gold); letter-spacing:0.3px; }
+
   /* ============ SETTINGS ============ */
   #settingsPanel{
     position:absolute; inset:0; background:rgba(5,6,15,0.92); z-index:50;
@@ -675,6 +715,9 @@
     <h3 class="shop-section-title">⭐ Trajes Premium</h3>
     <div id="bundleOfferBox"></div>
     <div class="outfit-list" id="premiumList"></div>
+    <div style="text-align:center; margin-top:14px;">
+      <a href="javascript:void(0)" onclick="recoverPremiumPurchase()" style="color:#9aa3c9; font-size:0.85rem; text-decoration:underline;">¿Ya pagaste y no se desbloqueó? Toca aquí</a>
+    </div>
   </div>
 </div>
 
@@ -779,6 +822,18 @@
   <button class="btn" onclick="backToMap()">Volver al camino</button>
 </div>
 
+<!-- ============ GRAN FINAL: al vencer el último libro (Apocalipsis) ============ -->
+<div class="screen" id="screen-finale">
+  <canvas id="confettiCanvas"></canvas>
+  <div class="finale-content">
+    <div class="finale-crown">👑</div>
+    <h2 class="finale-title">¡Felicidades!</h2>
+    <p class="finale-message">¡Felicidades! Has logrado vencer todos los desafíos. Has demostrado tener un amplio conocimiento de todos los libros de la Biblia. Te animo a seguir adelante y a no desmayar en la búsqueda de la sabiduría, el camino, la verdad y la vida que es Jesucristo.</p>
+    <p class="finale-signature">Te saluda<br><strong>&ldquo;MAPI LOS PENTECOSTALES DE ANTIOQUIA&rdquo;</strong></p>
+    <button class="btn" onclick="closeFinale()">Volver al camino</button>
+  </div>
+</div>
+
 <!-- ============ SETTINGS PANEL ============ -->
 <div id="statsModal">
   <div class="stats-box">
@@ -861,6 +916,7 @@ const state = {
   equippedAccessories: [],
   unlockedAccessories: [],
   unlockedPremium: [],
+  pendingPremiumTx: [], // transacciones de Wompi pagadas que aún no se confirmaron en este dispositivo
 };
 
 /* ================= GUARDADO DE PROGRESO ================= */
@@ -881,6 +937,7 @@ function saveGame(){
       equippedAccessories: state.equippedAccessories,
       unlockedAccessories: state.unlockedAccessories,
       unlockedPremium: state.unlockedPremium,
+      pendingPremiumTx: state.pendingPremiumTx,
       bookAttempts: bookAttempts,
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -905,6 +962,7 @@ function loadGame(){
     state.unlockedAccessories = data.unlockedAccessories || [];
     state.equippedAccessories = data.equippedAccessories || [];
     state.unlockedPremium = data.unlockedPremium || [];
+    state.pendingPremiumTx = data.pendingPremiumTx || [];
     if(data.bookAttempts){
       Object.keys(data.bookAttempts).forEach(k=>{ bookAttempts[k] = data.bookAttempts[k]; });
     }
@@ -2887,8 +2945,88 @@ function sfxWrong(){ playTone(160,0.3,'sawtooth',0.15); }
 function sfxWin(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.25,'sine',0.15), i*140)); }
 function sfxLose(){ [400,300,200].forEach((f,i)=>setTimeout(()=>playTone(f,0.3,'sawtooth',0.15), i*180)); }
 
+function sfxGrandVictory(){
+  // Fanfarria más larga y festiva que sfxWin(), para el Gran Final.
+  const melody = [523,659,784,1047,784,1047,1319];
+  melody.forEach((f,i)=>setTimeout(()=>playTone(f,0.3,'sine',0.18), i*150));
+  setTimeout(()=>{
+    // Acorde final sostenido
+    [523,659,784,1047].forEach(f=>playTone(f,1.3,'sine',0.12));
+  }, melody.length*150);
+}
+
 function vibrate(pattern){
   if(state.vibrationOn && navigator.vibrate) navigator.vibrate(pattern);
+}
+
+/* ================= CONFETI (canvas, sin librerías externas) ================= */
+let confettiAnimId = null;
+function launchConfetti(durationMs){
+  const canvas = document.getElementById('confettiCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  function resize(){ canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+  resize();
+  const colors = ['#e8b64a','#f2ce7e','#e74c3c','#2f8a4b','#3a7bd5','#c56bd9','#ffffff'];
+  const pieces = [];
+  const count = 140;
+  for(let i=0;i<count;i++){
+    pieces.push({
+      x: Math.random()*canvas.width,
+      y: -20 - Math.random()*canvas.height*0.6,
+      w: 6+Math.random()*6,
+      h: 10+Math.random()*8,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      speed: 2+Math.random()*3,
+      drift: (Math.random()-0.5)*2,
+      rot: Math.random()*360,
+      rotSpeed: (Math.random()-0.5)*10
+    });
+  }
+  const startTime = performance.now();
+  function frame(now){
+    const elapsed = now - startTime;
+    resize();
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      p.y += p.speed;
+      p.x += p.drift;
+      p.rot += p.rotSpeed;
+      if(p.y > canvas.height + 20){ p.y = -20; p.x = Math.random()*canvas.width; }
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI/180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    });
+    if(elapsed < durationMs){
+      confettiAnimId = requestAnimationFrame(frame);
+    } else {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
+  }
+  cancelAnimationFrame(confettiAnimId);
+  confettiAnimId = requestAnimationFrame(frame);
+}
+function stopConfetti(){
+  cancelAnimationFrame(confettiAnimId);
+  const canvas = document.getElementById('confettiCanvas');
+  if(canvas){
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+}
+
+function showGrandFinale(){
+  showScreen('screen-finale');
+  vibrate([80,60,80,60,80,60,300]);
+  sfxGrandVictory();
+  launchConfetti(6000);
+}
+function closeFinale(){
+  stopConfetti();
+  backToMap();
 }
 
 /* ================= NAVEGACIÓN ================= */
@@ -3351,11 +3489,23 @@ async function startPremiumCheckout(id){
   }
 }
 
-async function checkPremiumReturn(){
-  const urlParams = new URLSearchParams(window.location.search);
-  const transactionId = urlParams.get('id');
-  if(!transactionId) return;
-  history.replaceState(null, '', window.location.pathname);
+function addPendingPremiumTx(transactionId){
+  if(!state.pendingPremiumTx) state.pendingPremiumTx = [];
+  if(!state.pendingPremiumTx.includes(transactionId)) state.pendingPremiumTx.push(transactionId);
+  saveGame(); // se guarda YA, antes de intentar confirmar nada con el servidor
+}
+function removePendingPremiumTx(transactionId){
+  if(!state.pendingPremiumTx) return;
+  state.pendingPremiumTx = state.pendingPremiumTx.filter(t=>t!==transactionId);
+  saveGame();
+}
+
+// Confirma una transacción de Wompi contra /api/premium_verify y desbloquea
+// lo que corresponda. silent=true no muestra alertas (se usa para reintentos
+// automáticos en segundo plano, para no molestar con mensajes de compras
+// de hace días que ya se resolvieron de otra forma).
+async function verifyPremiumTransaction(transactionId, opts={}){
+  const silent = !!opts.silent;
   try{
     const res = await fetch('/api/premium_verify', {
       method: 'POST',
@@ -3376,29 +3526,71 @@ async function checkPremiumReturn(){
       throw new Error(msg);
     }
     if(data.paid && data.outfitId){
+      removePendingPremiumTx(transactionId);
       if(data.outfitId === BUNDLE_PRODUCT.id){
         PREMIUM_OUTFITS.forEach(o=>{ if(!state.unlockedPremium.includes(o.id)) state.unlockedPremium.push(o.id); });
         state.unlockedBook = BOOKS.length - 1;
         saveGame();
         applyOutfitVisuals();
-        alert('🎉 ¡Paquete completo desbloqueado! Todos los trajes y todos los libros están disponibles.');
-        openShop();
+        if(!silent){ alert('🎉 ¡Paquete completo desbloqueado! Todos los trajes y todos los libros están disponibles.'); openShop(); }
       }else{
         if(!state.unlockedPremium.includes(data.outfitId)) state.unlockedPremium.push(data.outfitId);
         state.equippedOutfit = data.outfitId;
         saveGame();
         applyOutfitVisuals();
-        alert('⭐ ¡Traje premium desbloqueado y equipado! ¡Gracias por tu compra!');
-        openShop();
+        if(!silent){ alert('⭐ ¡Traje premium desbloqueado y equipado! ¡Gracias por tu compra!'); openShop(); }
       }
+      return true;
     }else if(data.status === 'PENDING'){
-      alert('Tu pago está en proceso. Vuelve a abrir la tienda en unos segundos.');
+      if(!silent) alert('Tu pago está en proceso. Vuelve a abrir la tienda en unos segundos.');
+      return false; // se queda en la cola de pendientes para reintentar después
     }else{
-      alert('El pago no se completó. Si te apareció un cobro, avísanos.');
+      // Wompi dice que el pago no se completó (rechazado/cancelado/etc.):
+      // ya no tiene sentido seguir reintentando esta transacción.
+      removePendingPremiumTx(transactionId);
+      if(!silent) alert('El pago no se completó. Si te apareció un cobro, avísanos.');
+      return false;
     }
   }catch(err){
-    alert('No se pudo confirmar el pago: ' + err.message);
+    // Fallo de red, servidor caído, o una versión vieja de la página que no
+    // entiende la respuesta: NO se saca de la cola de pendientes, así que
+    // se reintenta solo la próxima vez que se abra el juego (con la versión
+    // que esté corriendo en ese momento).
+    if(!silent) alert('No se pudo confirmar el pago: ' + err.message + '\n\nNo te preocupes: se va a volver a intentar solo la próxima vez que abras el juego.');
+    return false;
   }
+}
+
+async function checkPremiumReturn(){
+  const urlParams = new URLSearchParams(window.location.search);
+  const transactionId = urlParams.get('id');
+  history.replaceState(null, '', window.location.pathname);
+  if(transactionId){
+    // Se guarda en el dispositivo ANTES de intentar confirmar nada, para no
+    // perder el número de transacción aunque esta carga de la página falle
+    // (por ejemplo, por estar viendo una versión vieja cacheada).
+    addPendingPremiumTx(transactionId);
+    await verifyPremiumTransaction(transactionId);
+  }
+  // Reintenta en silencio cualquier compra que haya quedado pendiente de
+  // una vez anterior (pagos que no se lograron confirmar en su momento).
+  if(state.pendingPremiumTx && state.pendingPremiumTx.length){
+    for(const tx of [...state.pendingPremiumTx]){
+      if(tx === transactionId) continue; // esa ya se intentó arriba
+      await verifyPremiumTransaction(tx, {silent:true});
+    }
+  }
+}
+
+// Recuperación manual: por si en algún momento un pago se cobró pero la
+// app nunca llegó a guardar el número de transacción (por ejemplo, si el
+// celular se quedó sin batería justo al volver de Wompi). Se le pide al
+// usuario el número de transacción (está en el correo/recibo de Wompi).
+function recoverPremiumPurchase(){
+  const id = prompt('Si ya pagaste un traje y no se desbloqueó, escribe aquí el número de transacción de Wompi (lo encuentras en el recibo o correo de confirmación):');
+  if(!id) return;
+  addPendingPremiumTx(id.trim());
+  verifyPremiumTransaction(id.trim());
 }
 
 function buyOrEquipOutfit(id){
@@ -3913,12 +4105,19 @@ function finishBattle(won){
       }
       document.getElementById('resultTitle').textContent = '¡Venciste a ' + BOOKS[battleState.bookIdx].boss + '!';
       document.getElementById('resultCoins').textContent = '+40 🪙';
+      saveGame();
+      // Si este era el último libro (Apocalipsis), mostramos el Gran Final
+      // con confeti y mensaje especial en vez de la pantalla de resultado normal.
+      if(battleState.bookIdx === BOOKS.length - 1){
+        showGrandFinale();
+        return;
+      }
     } else {
       document.getElementById('resultTitle').textContent = BOOKS[battleState.bookIdx].boss + ' te venció. ¡Inténtalo de nuevo!';
       document.getElementById('resultCoins').textContent = 'Repite este libro';
       bookAttempts[battleState.bookIdx] = (bookAttempts[battleState.bookIdx] || 0) + 1;
+      saveGame();
     }
-    saveGame();
     showScreen('screen-result');
   }, 1400);
 }
