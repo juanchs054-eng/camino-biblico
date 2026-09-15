@@ -11,11 +11,13 @@ const PREMIUM_OUTFITS = {
   'david': 9000,
   'ester': 9000,
   'rut': 9000,
-  'raquel': 6000,
+  'raquel': 7000,
   'maria': 6000,
   'saulo': 6000,
   'pablo': 4000,
   'jose': 2000,
+  // Paquete "Todo Incluido": debe coincidir con BUNDLE_PRODUCT.price en el HTML.
+  'todo-incluido': 39900,
 };
 
 async function sha256Hex(text) {
