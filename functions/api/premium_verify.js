@@ -27,7 +27,8 @@ export async function onRequestPost({ request, env }) {
     }
 
     // Pista de diagnóstico que NO revela la llave: solo el prefijo y la longitud.
-    const keyHint = publicKey.slice(0, 9) + '…(' + publicKey.length + ' chars)';
+    const keyHint =
+      publicKey.slice(0, 9) + '…' + publicKey.slice(-4) + ' (' + publicKey.length + ' chars)';
 
     // Sandbox y producción son API COMPLETAMENTE distintas en Wompi, con dominios
     // distintos. Probamos primero el que corresponde al prefijo de la llave, pero si
