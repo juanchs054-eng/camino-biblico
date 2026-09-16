@@ -28,6 +28,10 @@ export async function onRequestPost({ request, env }) {
     }
     const keyHint = publicKey.slice(0, 9) + '…' + publicKey.slice(-4) + ' (' + publicKey.length + ' chars)';
 
+    // La búsqueda por referencia (listar transacciones) es una operación
+    // privilegiada: Wompi la rechaza con 401 si se usa la llave pública.
+    const privateKey = (env.WOMPI_PRIVATE_KEY || '').trim();
+
     const host = publicKey.startsWith('pub_test_')
       ? 'https://sandbox.wompi.co'
       : 'https://production.wompi.co';
@@ -38,10 +42,15 @@ export async function onRequestPost({ request, env }) {
 
     const attempts = [];
 
-    async function pedir(url, etiqueta) {
+    async function pedir(url, etiqueta, llave) {
+      const token = llave || publicKey;
+      if (!token) {
+        attempts.push(`${etiqueta}: falta la llave necesaria`);
+        return null;
+      }
       let res;
       try {
-        res = await fetch(url, { headers: { Authorization: `Bearer ${publicKey}` } });
+        res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       } catch (e) {
         attempts.push(`${etiqueta}: sin conexión (${e.message})`);
         return null;
@@ -72,7 +81,8 @@ export async function onRequestPost({ request, env }) {
     if (!tx) {
       const porRef = await pedir(
         `${host}/v1/transactions?reference=${encodeURIComponent(entrada)}`,
-        'por-referencia'
+        'por-referencia',
+        privateKey
       );
       const lista = porRef?.data;
       if (Array.isArray(lista) && lista.length) {
