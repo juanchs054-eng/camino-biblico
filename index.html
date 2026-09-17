@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260912-2';
+const BUILD_VERSION = '20260917-promo1';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -4394,7 +4394,20 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<style>
+  /* Sello de versión: sirve para comprobar de un vistazo qué build está
+     cargada en cada celular. Se puede quitar cuando ya no haga falta. */
+  #sellitoVersion{
+    position:fixed; left:6px; bottom:4px; z-index:9500;
+    font-size:.6rem; color:rgba(255,255,255,.45);
+    background:rgba(0,0,0,.45); padding:2px 6px; border-radius:6px;
+    pointer-events:none; font-family:monospace;
+  }
+</style>
+<div id="sellitoVersion"></div>
 <script>
+document.getElementById('sellitoVersion').textContent = 'v ' + BUILD_VERSION;
+
 /* Descripción de cada traje (el personaje bíblico). */
 const PROMO_DESC = {
   'armadura-Dios': 'La coraza de justicia, el escudo de la fe y la espada del Espíritu. El atuendo más poderoso del juego.',
