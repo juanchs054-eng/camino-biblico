@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260917-dev1';
+const BUILD_VERSION = '20260917-dev2';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -4617,8 +4617,8 @@ function mostrarPromo(titulo){
   }
   #apocCine.show{ display:flex; }
   #apocCineImg{
-    position:absolute; inset:0;
-    background-size:cover; background-position:center;
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    object-fit:cover;
     opacity:0; transition:opacity .12s linear;
     transform:scale(1.04);
   }
@@ -4674,7 +4674,7 @@ function mostrarPromo(titulo){
 </style>
 
 <div id="apocCine">
-  <div id="apocCineImg"></div>
+  <img id="apocCineImg" alt="">
   <div id="apocCineFlash"></div>
   <div id="apocCineTxt"></div>
   <button id="apocCineSkip">Saltar ›</button>
@@ -4786,10 +4786,18 @@ function reproducirApocCine(alTerminar){
     flash.style.opacity = '0.75';
     setTimeout(()=>{ flash.style.opacity = '0'; }, 120);
 
+    const ruta = IMG_DIR + APOC_FRAMES[i] + '?' + BUILD_VERSION;
     img.classList.remove('on');
-    img.style.backgroundImage = 'url("' + IMG_DIR + APOC_FRAMES[i] + '?' + BUILD_VERSION + '")';
-    void img.offsetWidth;
-    img.classList.add('on');
+    img.onerror = function(){
+      // Si una imagen no carga, se dice cuál: así se sabe si falta el
+      // archivo o si el nombre no coincide.
+      txt.textContent = 'No se pudo cargar: ' + ruta;
+      txt.classList.add('on');
+    };
+    img.onload = function(){ img.classList.add('on'); };
+    img.src = ruta;
+    // Si la imagen ya estaba en caché, onload puede no dispararse.
+    if(img.complete && img.naturalWidth) img.classList.add('on');
 
     const t = APOC_TEXTOS[i] || '';
     if(t){ txt.textContent = t; txt.classList.add('on'); }
