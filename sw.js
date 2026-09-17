@@ -1,11 +1,19 @@
 // Service worker de Camino Bíblico.
-// Estrategia: RED PRIMERO PARA TODO (HTML, imágenes, manifest, lo que sea).
-// Mientras haya internet, siempre se sirve/guarda lo más nuevo que haya en
-// el servidor — así, si abrís un index.html distinto (o subís una versión
-// nueva del mismo archivo), se ve al instante, sin arrastrar caché vieja.
-// El caché queda solo como respaldo para cuando el celular se quede sin
-// conexión. No hace falta subir ningún número de versión a mano.
-const CACHE_NAME = 'camino-biblico-v1';
+//
+// Dos estrategias, según lo que se pida:
+//
+// 1) CACHÉ PRIMERO para las imágenes de /imagenes/. Son archivos que no
+//    cambian: cuando se sube una imagen nueva se cambia BUILD_VERSION en el
+//    index.html, y como esa versión va pegada a la URL (?20260912-2), el
+//    navegador la pide como si fuera un archivo distinto. Así el juego abre
+//    al instante en la segunda visita, sin volver a bajar los trajes.
+//
+// 2) RED PRIMERO para todo lo demás (HTML, manifest, etc.). Mientras haya
+//    internet siempre se sirve lo más nuevo del servidor, así una versión
+//    nueva del index.html se ve de inmediato, sin arrastrar caché vieja.
+//
+// El caché queda como respaldo para cuando el celular se quede sin conexión.
+const CACHE_NAME = 'camino-biblico-v2';
 const APP_SHELL = ['./', './index.html', './icon-192.png', './icon-512.png', './manifest.json'];
 
 self.addEventListener('install', event => {
@@ -30,9 +38,25 @@ self.addEventListener('fetch', event => {
   // van directo a la red, sin que el service worker intervenga.
   if (url.pathname.startsWith('/api/')) return;
 
-  // RED PRIMERO para todo. Si responde, se actualiza el caché con lo nuevo
-  // y se muestra eso. Si no hay conexión, se cae de vuelta al caché (y si
-  // era una navegación de página sin nada guardado, al index.html).
+  // ---- Imágenes: caché primero ----
+  if (url.pathname.includes('/imagenes/')) {
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        if (cached) return cached;
+        return fetch(event.request).then(resp => {
+          // Solo guardamos respuestas correctas, para no dejar errores pegados.
+          if (resp && resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          }
+          return resp;
+        });
+      })
+    );
+    return;
+  }
+
+  // ---- Todo lo demás: red primero ----
   event.respondWith(
     fetch(event.request)
       .then(resp => {
