@@ -4207,6 +4207,301 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+<!-- =======================================================================
+     PROMOCIÓN DE TRAJES PREMIUM  (v2)
+     - Ventana con traje aleatorio al iniciar y DESPUÉS DE CADA BATALLA.
+     - Muestra Escudo y Fuerza reales, tomados de OUTFIT_STATS.
+     - 4 círculos fijos a los lados del mapa (2 por lado).
+     - Barra fija del Paquete Todo Incluido.
+     Pegar este bloque COMPLETO justo antes de la etiqueta de cierre del body.
+     ======================================================================= -->
+<style>
+  /* ---- Ventana de traje destacado ---- */
+  #promoModalBg{
+    position:fixed; inset:0; background:rgba(0,0,0,.8);
+    display:none; align-items:center; justify-content:center;
+    z-index:9000; padding:18px;
+  }
+  #promoModalBg.show{ display:flex; }
+  .promo-modal{
+    background:linear-gradient(160deg,#2a2049,#150f28);
+    border:2px solid var(--gold,#e8c14a); border-radius:20px;
+    max-width:330px; width:100%; padding:18px 16px 14px;
+    box-shadow:0 18px 50px rgba(0,0,0,.75); text-align:center;
+    animation:promoPop .3s ease-out; max-height:92vh; overflow-y:auto;
+  }
+  @keyframes promoPop{ from{transform:scale(.88);opacity:0} to{transform:scale(1);opacity:1} }
+  .promo-badge{
+    display:inline-block; background:var(--gold,#e8c14a); color:#3a2a08;
+    font-size:.66rem; font-weight:800; letter-spacing:.4px;
+    padding:4px 12px; border-radius:20px; margin-bottom:10px;
+  }
+  .promo-img{
+    width:104px; height:104px; margin:0 auto 10px; border-radius:16px;
+    background-size:cover; background-position:center top;
+    border:2px solid rgba(232,193,74,.55); background-color:#2a2145;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2.4rem;
+  }
+  .promo-name{ font-size:1.2rem; font-weight:700; color:var(--gold,#e8c14a); margin-bottom:6px; }
+  .promo-desc{ font-size:.86rem; line-height:1.4; color:#d6d0e6; margin-bottom:12px; }
+  .promo-stats{
+    display:flex; gap:8px; margin-bottom:12px;
+  }
+  .promo-stat{
+    flex:1; background:rgba(255,255,255,.07); border-radius:12px; padding:8px 4px;
+    border:1px solid rgba(232,193,74,.25);
+  }
+  .promo-stat-ico{ font-size:1.2rem; }
+  .promo-stat-val{ font-size:1.05rem; font-weight:800; color:#fff; margin-top:1px; }
+  .promo-stat-lbl{ font-size:.6rem; color:#bdb4d6; letter-spacing:.5px; text-transform:uppercase; }
+  .promo-stat-note{
+    font-size:.72rem; color:#a9e6a0; margin-bottom:12px; line-height:1.35;
+  }
+  .promo-price{ font-size:1.45rem; font-weight:800; color:#fff; margin-bottom:12px; }
+  .promo-btns{ display:flex; gap:9px; }
+  .promo-btns button{
+    flex:1; padding:11px 8px; border-radius:12px; border:none;
+    font-size:.92rem; font-weight:700; cursor:pointer;
+  }
+  .promo-buy{ background:var(--gold,#e8c14a); color:#3a2a08; }
+  .promo-close{ background:rgba(255,255,255,.12); color:#ccc; }
+
+  /* ---- Círculos fijos a los lados del mapa ---- */
+  #promoSideL, #promoSideR{
+    position:absolute; top:50%; transform:translateY(-50%);
+    display:flex; flex-direction:column; gap:14px; z-index:6;
+    pointer-events:none;
+  }
+  #promoSideL{ left:6px; }
+  #promoSideR{ right:6px; }
+  .promo-circle{
+    width:58px; pointer-events:auto; cursor:pointer; text-align:center;
+    animation:promoFloat 3.5s ease-in-out infinite;
+  }
+  .promo-circle:nth-child(2){ animation-delay:1.2s; }
+  @keyframes promoFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+  .promo-circle-img{
+    width:52px; height:52px; margin:0 auto; border-radius:50%;
+    background-size:cover; background-position:center top;
+    background-color:#332a55; border:2.5px solid var(--gold,#e8c14a);
+    box-shadow:0 3px 10px rgba(0,0,0,.55), 0 0 0 3px rgba(232,193,74,.15);
+    display:flex; align-items:center; justify-content:center; font-size:1.4rem;
+  }
+  .promo-circle-price{
+    font-size:.6rem; font-weight:800; color:var(--gold,#e8c14a);
+    margin-top:3px; background:rgba(0,0,0,.55); border-radius:8px;
+    padding:1px 3px; display:inline-block;
+  }
+
+  /* ---- Oferta fija del paquete completo ---- */
+  #promoBundleBar{
+    position:absolute; left:10px; right:10px; bottom:8px; z-index:20;
+    padding:10px 12px; border-radius:14px;
+    background:linear-gradient(100deg,#6a4a12,#2a2150);
+    border:1.5px solid var(--gold,#e8c14a);
+    box-shadow:0 -4px 18px rgba(0,0,0,.6);
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+  }
+  #promoBundleBar .pb-txt{ flex:1; min-width:0; }
+  #promoBundleBar .pb-title{ font-size:.8rem; font-weight:800; color:#fff; }
+  #promoBundleBar .pb-sub{ font-size:.66rem; color:#e0d6b8; margin-top:1px; }
+  #promoBundleBar .pb-price{ font-size:.98rem; font-weight:800; color:var(--gold,#e8c14a); white-space:nowrap; }
+  #promoBundleBar .pb-old{ font-size:.62rem; color:#bbb; text-decoration:line-through; text-align:right; }
+</style>
+
+<div id="promoModalBg">
+  <div class="promo-modal">
+    <span class="promo-badge" id="promoBadge">✨ TRAJE DESTACADO</span>
+    <div class="promo-img" id="promoImg"></div>
+    <div class="promo-name" id="promoName"></div>
+    <div class="promo-desc" id="promoDesc"></div>
+    <div class="promo-stats">
+      <div class="promo-stat">
+        <div class="promo-stat-ico">🛡️</div>
+        <div class="promo-stat-val" id="promoShield">0</div>
+        <div class="promo-stat-lbl">Escudo</div>
+      </div>
+      <div class="promo-stat">
+        <div class="promo-stat-ico">⚡</div>
+        <div class="promo-stat-val" id="promoForce">0</div>
+        <div class="promo-stat-lbl">Fuerza</div>
+      </div>
+    </div>
+    <div class="promo-stat-note" id="promoNote"></div>
+    <div class="promo-price" id="promoPrice"></div>
+    <div class="promo-btns">
+      <button class="promo-close" onclick="closePromoModal()">Ahora no</button>
+      <button class="promo-buy" id="promoBuy">💳 Comprar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Descripción de cada traje (el personaje bíblico). */
+const PROMO_DESC = {
+  'armadura-Dios': 'La coraza de justicia, el escudo de la fe y la espada del Espíritu. El atuendo más poderoso del juego.',
+  'jesus': 'El manto del Maestro de Galilea. Camina el sendero con la autoridad de quien lo recorrió primero.',
+  'moises': 'El libertador de Egipto, con el bastón que abrió el mar.',
+  'elias': 'El manto del profeta de fuego, el que subió al cielo en un torbellino.',
+  'david': 'De pastor a rey. El púrpura de quien derrotó al gigante con una honda.',
+  'ester': 'La reina que arriesgó su vida por su pueblo. Elegancia y valentía.',
+  'rut': 'La lealtad hecha persona. "Tu pueblo será mi pueblo".',
+  'raquel': 'La amada de Jacob, por quien esperó catorce años.',
+  'maria': 'La madre de Jesús. Humildad y gracia en cada detalle.',
+  'saulo': 'El perseguidor antes del camino a Damasco. Intenso y sombrío.',
+  'pablo': 'El apóstol de los gentiles, que escribió gran parte del Nuevo Testamento.',
+  'jose': 'La túnica de colores que despertó la envidia de sus hermanos. El soñador de Egipto.'
+};
+
+/* Traduce los números a una frase que se entienda. */
+function promoNota(st){
+  const base = OUTFIT_STATS['hojas'] || { escudo:0, fuerza:1 };
+  const partes = [];
+  if(st.escudo > base.escudo){
+    partes.push('Resiste ' + st.escudo + (st.escudo === 1 ? ' respuesta mala' : ' respuestas malas'));
+  }
+  if(st.fuerza > base.fuerza){
+    partes.push('pega ' + (st.fuerza / base.fuerza).toFixed(1).replace('.0','') + '× más fuerte');
+  }
+  return partes.length ? '✅ ' + partes.join(' y ') + ' que la túnica de hojas.' : '';
+}
+
+function promoImgUrl(o){
+  const g = (typeof state !== 'undefined' && state.avatar === '👧') ? 'girl' : 'boy';
+  const v = (typeof BUILD_VERSION !== 'undefined') ? BUILD_VERSION : '1';
+  const full = g + '_' + o.id + '_fullbody.png';
+  if(typeof FULLBODY_CACHE !== 'undefined' && FULLBODY_CACHE[full]) return full + '?' + v;
+  if(o.torsoImg) return o.torsoImg + '?' + v;
+  return '';
+}
+
+function promoBloqueados(){
+  return PREMIUM_OUTFITS.filter(o => !state.unlockedPremium.includes(o.id));
+}
+
+function promoAlAzar(n){
+  const pool = promoBloqueados().slice();
+  for(let i = pool.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, n);
+}
+
+let promoDestacado = null;
+
+function abrirPromoModal(titulo){
+  const locked = promoBloqueados();
+  if(!locked.length) return false;
+  promoDestacado = locked[Math.floor(Math.random() * locked.length)];
+  const st = (typeof OUTFIT_STATS !== 'undefined' && OUTFIT_STATS[promoDestacado.id]) || { escudo:0, fuerza:1 };
+  const img = promoImgUrl(promoDestacado);
+  const box = document.getElementById('promoImg');
+  if(img){ box.style.backgroundImage = 'url("' + img + '")'; box.textContent = ''; }
+  else { box.style.backgroundImage = ''; box.textContent = '⭐'; }
+
+  document.getElementById('promoBadge').textContent = titulo || '✨ TRAJE DESTACADO';
+  document.getElementById('promoName').textContent = promoDestacado.name;
+  document.getElementById('promoDesc').textContent = PROMO_DESC[promoDestacado.id] || 'Un traje exclusivo para tu aventura.';
+  document.getElementById('promoShield').textContent = st.escudo;
+  document.getElementById('promoForce').textContent = st.fuerza;
+  document.getElementById('promoNote').textContent = promoNota(st);
+  document.getElementById('promoPrice').textContent = '$' + promoDestacado.price.toLocaleString('es-CO');
+  document.getElementById('promoBuy').onclick = ()=>{ cerrarPromo(); premiumAction(promoDestacado.id); };
+  document.getElementById('promoModalBg').classList.add('show');
+  return true;
+}
+
+function cerrarPromo(){ document.getElementById('promoModalBg').classList.remove('show'); }
+function closePromoModal(){ cerrarPromo(); renderPromoCirculos(); }
+
+/* 4 círculos fijos: 2 a cada lado del camino. */
+function renderPromoCirculos(){
+  const cont = document.querySelector('#screen-map .map-scroll');
+  if(!cont) return;
+  ['promoSideL','promoSideR'].forEach(id => { const e = document.getElementById(id); if(e) e.remove(); });
+
+  const locked = promoBloqueados();
+  if(!locked.length){ renderPromoBarra(); return; }
+
+  // El destacado va primero, y se completan hasta 4 con otros distintos.
+  const otros = promoAlAzar(6).filter(o => !promoDestacado || o.id !== promoDestacado.id);
+  const lista = (promoDestacado ? [promoDestacado] : []).concat(otros).slice(0, 4);
+
+  const izq = document.createElement('div'); izq.id = 'promoSideL';
+  const der = document.createElement('div'); der.id = 'promoSideR';
+
+  lista.forEach((o, i)=>{
+    const img = promoImgUrl(o);
+    const c = document.createElement('div');
+    c.className = 'promo-circle';
+    c.innerHTML =
+      '<div class="promo-circle-img" style="' +
+        (img ? 'background-image:url(\'' + img + '\')' : '') + '">' +
+        (img ? '' : '⭐') +
+      '</div>' +
+      '<div class="promo-circle-price">$' + (o.price / 1000) + 'k</div>';
+    c.title = o.name;
+    c.onclick = ()=> premiumAction(o.id);
+    (i < 2 ? izq : der).appendChild(c);
+  });
+
+  cont.appendChild(izq);
+  cont.appendChild(der);
+  renderPromoBarra();
+}
+
+/* Barra fija del paquete completo. */
+function renderPromoBarra(){
+  const pantalla = document.getElementById('screen-map');
+  if(!pantalla) return;
+  const yaTiene = PREMIUM_OUTFITS.every(o => state.unlockedPremium.includes(o.id))
+    && state.unlockedBook >= BOOKS.length - 1;
+  let bar = document.getElementById('promoBundleBar');
+  if(yaTiene){ if(bar) bar.remove(); return; }
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'promoBundleBar';
+    pantalla.appendChild(bar);
+    bar.onclick = ()=> premiumAction(BUNDLE_PRODUCT.id);
+  }
+  const full = PREMIUM_OUTFITS.reduce((s,o)=>s+o.price, 0);
+  bar.innerHTML =
+    '<div class="pb-txt">' +
+      '<div class="pb-title">⭐ Paquete Todo Incluido</div>' +
+      '<div class="pb-sub">12 trajes + los 66 libros</div>' +
+    '</div>' +
+    '<div>' +
+      '<div class="pb-old">$' + full.toLocaleString('es-CO') + '</div>' +
+      '<div class="pb-price">$' + BUNDLE_PRODUCT.price.toLocaleString('es-CO') + '</div>' +
+    '</div>';
+}
+
+/* Enganches automáticos. */
+let promoInicioMostrado = false;
+(function engancharPromo(){
+  // 1) Al dibujar el mapa: repintar círculos (y ventana la primera vez).
+  const renderMapOriginal = window.renderMap;
+  window.renderMap = function(){
+    renderMapOriginal.apply(this, arguments);
+    if(!promoInicioMostrado){
+      promoInicioMostrado = true;
+      setTimeout(()=>{ if(!abrirPromoModal('✨ TRAJE DESTACADO')) renderPromoCirculos(); }, 700);
+    } else {
+      renderPromoCirculos();
+    }
+  };
+
+  // 2) Al volver de una batalla: ventana con otro traje al azar.
+  const backToMapOriginal = window.backToMap;
+  window.backToMap = function(){
+    backToMapOriginal.apply(this, arguments);
+    setTimeout(()=>{ if(!abrirPromoModal('⚔️ ¿LISTO PARA EL SIGUIENTE JEFE?')) renderPromoCirculos(); }, 900);
+  };
+})();
+</script>
+
 </body>
 
 </html>
