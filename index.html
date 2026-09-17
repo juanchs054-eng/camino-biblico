@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260917-promo2';
+const BUILD_VERSION = '20260917-dev1';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -4603,6 +4603,448 @@ function mostrarPromo(titulo){
     setTimeout(()=> mostrarPromo('✨ TRAJE DESTACADO'), 900);
   }
 })();
+</script>
+
+<!-- =======================================================================
+     APOCALIPSIS: secuencia cinematográfica, música propia y requisito
+     de la Armadura de Dios para poder vencer al Gran Dragón.
+     ======================================================================= -->
+<style>
+  /* ---- Cine a pantalla completa ---- */
+  #apocCine{
+    position:fixed; inset:0; z-index:9800; background:#000;
+    display:none; align-items:center; justify-content:center; overflow:hidden;
+  }
+  #apocCine.show{ display:flex; }
+  #apocCineImg{
+    position:absolute; inset:0;
+    background-size:cover; background-position:center;
+    opacity:0; transition:opacity .12s linear;
+    transform:scale(1.04);
+  }
+  #apocCineImg.on{ opacity:1; }
+  #apocCineFlash{
+    position:absolute; inset:0; background:#fff; opacity:0;
+    pointer-events:none; transition:opacity .18s ease-out;
+  }
+  #apocCineSkip{
+    position:absolute; right:14px; bottom:16px; z-index:3;
+    background:rgba(0,0,0,.55); color:#ddd; border:1px solid rgba(255,255,255,.3);
+    padding:7px 14px; border-radius:20px; font-size:.78rem; cursor:pointer;
+  }
+  #apocCineTxt{
+    position:absolute; left:0; right:0; bottom:68px; z-index:2; text-align:center;
+    color:#fff; font-size:1.05rem; font-weight:700; padding:0 24px;
+    text-shadow:0 2px 12px #000, 0 0 30px #c0392b; opacity:0;
+    transition:opacity .5s ease;
+  }
+  #apocCineTxt.on{ opacity:1; }
+
+  /* ---- Mensaje de derrota a pantalla completa ---- */
+  #apocDerrota{
+    position:fixed; inset:0; z-index:9850; display:none;
+    flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:26px 22px;
+    background:radial-gradient(circle at 50% 35%, #3a0d0d 0%, #150404 60%, #000 100%);
+  }
+  #apocDerrota.show{ display:flex; }
+  #apocDerrota .ad-dragon{ font-size:3.4rem; margin-bottom:6px; animation:adLatir 1.8s ease-in-out infinite; }
+  @keyframes adLatir{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+  #apocDerrota .ad-titulo{
+    font-size:1.5rem; font-weight:800; color:#e74c3c; margin-bottom:14px;
+    text-shadow:0 0 22px rgba(231,76,60,.6);
+  }
+  #apocDerrota .ad-msg{
+    font-size:1.08rem; line-height:1.5; color:#f3e6e6; max-width:330px; margin-bottom:18px;
+  }
+  #apocDerrota .ad-msg b{ color:var(--gold,#e8c14a); }
+  #apocDerrota .ad-armadura{
+    width:120px; height:120px; border-radius:18px; margin-bottom:16px;
+    border:2px solid var(--gold,#e8c14a); box-shadow:0 0 34px rgba(232,193,74,.45);
+  }
+  #apocDerrota .ad-btn{
+    background:var(--gold,#e8c14a); color:#3a2a08; border:none;
+    padding:14px 26px; border-radius:14px; font-size:1rem; font-weight:800;
+    cursor:pointer; margin-bottom:10px; box-shadow:0 6px 20px rgba(0,0,0,.5);
+  }
+  #apocDerrota .ad-salir{
+    background:none; border:none; color:#9b9b9b; font-size:.88rem;
+    text-decoration:underline; cursor:pointer;
+  }
+</style>
+
+<div id="apocCine">
+  <div id="apocCineImg"></div>
+  <div id="apocCineFlash"></div>
+  <div id="apocCineTxt"></div>
+  <button id="apocCineSkip">Saltar ›</button>
+</div>
+
+<div id="apocDerrota">
+  <div class="ad-dragon">🐉</div>
+  <div class="ad-titulo">El Gran Dragón te ha vencido</div>
+  <div class="ad-armadura" id="apocArmaduraImg"></div>
+  <div class="ad-msg" id="apocDerrotaMsg"></div>
+  <button class="ad-btn" id="apocDerrotaBtn"></button>
+  <button class="ad-salir" onclick="cerrarApocDerrota()">Volver al camino</button>
+</div>
+
+<script>
+/* ===== Fotogramas de la secuencia, en orden ===== */
+const APOC_FRAMES = [
+  'apoc_1.webp','apoc_2.webp','apoc_3.webp',
+  'apoc_4.webp','apoc_5.webp','apoc_6.webp','apoc_7.webp'
+];
+/* Texto que aparece sobre la secuencia (uno por fotograma; vacío = sin texto) */
+const APOC_TEXTOS = [
+  'Y apareció una gran señal en el cielo…',
+  '',
+  'Un dragón escarlata con siete cabezas coronadas.',
+  '',
+  'Y su aliento consumió la tierra.',
+  '',
+  'Ha llegado la última batalla.'
+];
+const APOC_ID = 'armadura-Dios';   // traje requerido
+const APOC_MS = 700;               // duración de cada fotograma
+
+/* Precarga: sin esto los primeros fotogramas saldrían en negro. */
+let apocPrecargado = false;
+function precargarApoc(){
+  if(apocPrecargado) return;
+  apocPrecargado = true;
+  APOC_FRAMES.forEach(f => { const i = new Image(); i.src = IMG_DIR + f + '?' + BUILD_VERSION; });
+}
+
+/* ===== Música propia de Apocalipsis =====
+   Acorde grave y disonante con un latido lento, en vez del ambiente normal. */
+let apocMusica = null;
+function startApocMusica(){
+  if(!state.ambientOn) return;
+  stopApocMusica();
+  try{
+    const ctx = getCtx();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.035;
+    gain.connect(ctx.destination);
+
+    // Dos graves separados por un semitono: suena inquietante a propósito.
+    const bajo = ctx.createOscillator();
+    bajo.type = 'sawtooth'; bajo.frequency.value = 55;
+    const disonante = ctx.createOscillator();
+    disonante.type = 'sine'; disonante.frequency.value = 58.27;
+
+    // Latido: sube y baja el volumen despacio, como una respiración.
+    const latido = ctx.createOscillator();
+    const latidoGain = ctx.createGain();
+    latido.type = 'sine'; latido.frequency.value = 0.45;
+    latidoGain.gain.value = 0.022;
+    latido.connect(latidoGain); latidoGain.connect(gain.gain);
+
+    bajo.connect(gain); disonante.connect(gain);
+    bajo.start(); disonante.start(); latido.start();
+    apocMusica = { bajo, disonante, latido, gain };
+  }catch(e){}
+}
+function stopApocMusica(){
+  if(apocMusica){
+    try{ apocMusica.bajo.stop(); apocMusica.disonante.stop(); apocMusica.latido.stop(); }catch(e){}
+    apocMusica = null;
+  }
+}
+
+/* ===== ¿Es el jefe final? ===== */
+function esApocalipsis(bookIdx){ return bookIdx === BOOKS.length - 1; }
+function tieneArmadura(){ return (state.unlockedPremium || []).includes(APOC_ID); }
+function llevaArmadura(){ return state.equippedOutfit === APOC_ID; }
+
+/* ===== La secuencia ===== */
+let apocCineTimer = null;
+function reproducirApocCine(alTerminar){
+  const cine = document.getElementById('apocCine');
+  const img = document.getElementById('apocCineImg');
+  const flash = document.getElementById('apocCineFlash');
+  const txt = document.getElementById('apocCineTxt');
+  let i = 0;
+
+  function terminar(){
+    clearTimeout(apocCineTimer);
+    cine.classList.remove('show');
+    img.classList.remove('on');
+    txt.classList.remove('on');
+    document.getElementById('apocCineSkip').onclick = null;
+    if(typeof alTerminar === 'function') alTerminar();
+  }
+
+  document.getElementById('apocCineSkip').onclick = terminar;
+  cine.classList.add('show');
+
+  function siguiente(){
+    if(i >= APOC_FRAMES.length){ terminar(); return; }
+    // Fogonazo blanco en el corte: hace que el salto entre imágenes
+    // se lea como un montaje y no como una carga lenta.
+    flash.style.opacity = '0.75';
+    setTimeout(()=>{ flash.style.opacity = '0'; }, 120);
+
+    img.classList.remove('on');
+    img.style.backgroundImage = 'url("' + IMG_DIR + APOC_FRAMES[i] + '?' + BUILD_VERSION + '")';
+    void img.offsetWidth;
+    img.classList.add('on');
+
+    const t = APOC_TEXTOS[i] || '';
+    if(t){ txt.textContent = t; txt.classList.add('on'); }
+    else { txt.classList.remove('on'); }
+
+    try{ playTone(70 + i * 6, 0.5, 'sawtooth', 0.09); }catch(e){}
+    vibrate([40]);
+
+    i++;
+    apocCineTimer = setTimeout(siguiente, APOC_MS);
+  }
+  siguiente();
+}
+
+/* ===== Mensaje de derrota ===== */
+function mostrarApocDerrota(){
+  const caja = document.getElementById('apocDerrota');
+  const armadura = PREMIUM_OUTFITS.find(o => o.id === APOC_ID);
+  const msg = document.getElementById('apocDerrotaMsg');
+  const btn = document.getElementById('apocDerrotaBtn');
+
+  if(armadura) document.getElementById('apocArmaduraImg').setAttribute('style', outfitThumbStyle(armadura));
+
+  if(tieneArmadura()){
+    // Ya la compró: solo le falta ponérsela.
+    msg.innerHTML = 'Solo puedes vencer al Gran Dragón usando <b>Toda la Armadura de Dios</b>.<br>Ya la tienes: equípatela antes de volver a la batalla.';
+    btn.textContent = '🛡️ Equipar la Armadura';
+    btn.onclick = ()=>{
+      state.equippedOutfit = APOC_ID;
+      saveGame();
+      applyOutfitVisuals();
+      cerrarApocDerrota();
+    };
+  }else{
+    msg.innerHTML = 'Solo puedes vencer al Gran Dragón usando <b>Toda la Armadura de Dios</b>.<br>Escudo 8 y Fuerza 8: la única que resiste su aliento de fuego.';
+    btn.textContent = '💳 Conseguir la Armadura — $' + (armadura ? armadura.price.toLocaleString('es-CO') : '14.000');
+    btn.onclick = ()=>{ cerrarApocDerrota(); premiumAction(APOC_ID); };
+  }
+
+  caja.classList.add('show');
+  try{ sfxLose(); }catch(e){}
+  vibrate([400]);
+}
+function cerrarApocDerrota(){
+  document.getElementById('apocDerrota').classList.remove('show');
+  stopApocMusica();
+  showScreen('screen-map');
+  renderMap();
+  if(state.ambientOn) startAmbient();
+}
+
+/* ===== Enganches ===== */
+(function engancharApocalipsis(){
+  const startBattleOriginal = window.startBattle;
+  window.startBattle = function(bookIdx){
+    if(!esApocalipsis(bookIdx)){ return startBattleOriginal.apply(this, arguments); }
+
+    // Jefe final: primero la secuencia, con su propia música.
+    precargarApoc();
+    stopAmbient();
+    startApocMusica();
+    showScreen('screen-battle');
+
+    reproducirApocCine(()=>{
+      if(llevaArmadura()){
+        // Va equipado: batalla normal (la música apocalíptica sigue de fondo).
+        startBattleOriginal.call(window, bookIdx);
+      }else{
+        // Sin la armadura no hay nada que hacer contra el Dragón.
+        mostrarApocDerrota();
+      }
+    });
+  };
+
+  // Al salir de la pantalla de batalla, cortar la música de Apocalipsis.
+  const showScreenOriginalApoc = window.showScreen;
+  window.showScreen = function(id){
+    if(id !== 'screen-battle' && apocMusica) stopApocMusica();
+    return showScreenOriginalApoc.apply(this, arguments);
+  };
+
+  // Precargar los fotogramas cuando el jugador ya esté cerca del final,
+  // para que la secuencia arranque sin esperas.
+  setTimeout(()=>{
+    if(state && state.unlockedBook >= BOOKS.length - 3) precargarApoc();
+  }, 4000);
+})();
+</script>
+
+<!-- =======================================================================
+     MODO DESARROLLADOR
+     Botón 🔑 en la esquina del panel de Ajustes. Pide un código y, si es
+     correcto, abre un panel de atajos para probar el juego.
+     El código NO está escrito en el archivo: se guarda su huella SHA-256,
+     así no se puede leer viendo el código fuente de la página.
+     ======================================================================= -->
+<style>
+  /* Llave discreta en la esquina del panel de ajustes */
+  #devLlave{
+    position:absolute; top:8px; right:10px;
+    background:none; border:none; font-size:1rem; cursor:pointer;
+    opacity:.28; padding:4px; line-height:1;
+  }
+  #devLlave:active{ opacity:1; }
+  .settings-box{ position:relative; }
+
+  /* Panel de atajos (solo visible tras meter el código) */
+  #devPanel{
+    position:fixed; right:8px; top:60px; z-index:9995;
+    background:rgba(10,10,18,.94); border:1.5px solid #c0392b; border-radius:14px;
+    padding:9px; display:none; flex-direction:column; gap:6px; width:158px;
+    box-shadow:0 8px 26px rgba(0,0,0,.6);
+  }
+  #devPanel.show{ display:flex; }
+  #devPanel .dev-tit{
+    font-size:.64rem; font-weight:800; color:#e74c3c; text-align:center;
+    letter-spacing:.5px; margin-bottom:2px;
+  }
+  #devPanel button{
+    background:#2b2b3d; color:#e8e8e8; border:1px solid #4a4a5e; border-radius:9px;
+    padding:7px 9px; font-size:.7rem; cursor:pointer; text-align:left;
+  }
+  #devPanel button:active{ background:#3d3d55; }
+  #devPanel .dev-cerrar{ background:#c0392b !important; text-align:center !important; font-weight:700; }
+</style>
+
+<div id="devPanel">
+  <div class="dev-tit">🔧 MODO PRUEBAS</div>
+  <button onclick="devDesbloquearTodo()">✨ Desbloquear todo</button>
+  <button onclick="devBloquearPremium()">🔒 Bloquear premium</button>
+  <button onclick="devPonerArmadura()">🛡️ Poner Armadura de Dios</button>
+  <button onclick="devQuitarArmadura()">🧥 Quitar la Armadura</button>
+  <button onclick="devIrApocalipsis()">🐉 Ir a Apocalipsis</button>
+  <button onclick="devBatallaApoc()">⚔️ Batalla del Dragón</button>
+  <button onclick="devMonedas()">🪙 +5.000 monedas</button>
+  <button onclick="devVerPromo()">📣 Ver promoción</button>
+  <button class="dev-cerrar" onclick="devCerrarPanel()">Cerrar</button>
+</div>
+
+<script>
+/* Huella del código de desarrollador. No es el código: es su SHA-256,
+   así que no se puede deducir leyendo el archivo. */
+const DEV_HUELLA = 'b264f4eefe79f5390ecb1cf68ae758e6dfd5bb6510dd0f1f4573d871e8699825';
+let devActivo = false;
+
+async function devHuellaDe(texto){
+  const datos = new TextEncoder().encode(texto);
+  const buf = await crypto.subtle.digest('SHA-256', datos);
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* Coloca la llave 🔑 dentro del panel de Ajustes. */
+(function ponerLlave(){
+  const caja = document.querySelector('#settingsPanel .settings-box');
+  if(!caja) return;
+  const btn = document.createElement('button');
+  btn.id = 'devLlave';
+  btn.textContent = '🔑';
+  btn.title = 'Acceso de desarrollador';
+  btn.onclick = devPedirCodigo;
+  caja.appendChild(btn);
+})();
+
+async function devPedirCodigo(){
+  if(devActivo){ devAbrirPanel(); return; }
+  const codigo = prompt('Código de desarrollador:');
+  if(!codigo) return;
+  let huella;
+  try{
+    huella = await devHuellaDe(codigo.trim());
+  }catch(e){
+    alert('Este navegador no permite verificar el código.');
+    return;
+  }
+  if(huella === DEV_HUELLA){
+    devActivo = true;
+    devAbrirPanel();
+  }else{
+    alert('Código incorrecto.');
+  }
+}
+
+function devAbrirPanel(){
+  document.getElementById('devPanel').classList.add('show');
+  if(typeof closeSettings === 'function') closeSettings();
+}
+function devCerrarPanel(){
+  document.getElementById('devPanel').classList.remove('show');
+}
+
+/* ---------------- Atajos ---------------- */
+function devDesbloquearTodo(){
+  state.coins = 99999;
+  state.unlockedBook = BOOKS.length - 1;
+  state.unlockedOutfits = OUTFITS.map(o => o.id);
+  state.unlockedPremium = PREMIUM_OUTFITS.map(o => o.id);
+  saveGame();
+  applyOutfitVisuals();
+  if(typeof renderMap === 'function'){ showScreen('screen-map'); renderMap(); }
+  alert('Todo desbloqueado: 12 trajes premium, los 66 libros y 99.999 monedas.');
+}
+
+function devBloquearPremium(){
+  state.unlockedPremium = [];
+  state.equippedOutfit = 'hojas';
+  saveGame();
+  applyOutfitVisuals();
+  if(typeof renderMap === 'function') renderMap();
+  alert('Trajes premium bloqueados (para probar la promoción y el muro del Dragón).');
+}
+
+function devPonerArmadura(){
+  if(!state.unlockedPremium.includes('armadura-Dios')) state.unlockedPremium.push('armadura-Dios');
+  state.equippedOutfit = 'armadura-Dios';
+  saveGame();
+  applyOutfitVisuals();
+  alert('Armadura de Dios equipada: Escudo 8, Fuerza 8.');
+}
+
+function devQuitarArmadura(){
+  state.equippedOutfit = 'hojas';
+  saveGame();
+  applyOutfitVisuals();
+  alert('Armadura desequipada (sigue comprada, para ver el aviso de "equipar").');
+}
+
+function devIrApocalipsis(){
+  state.unlockedBook = BOOKS.length - 1;
+  state.avatarBookIdx = BOOKS.length - 1;
+  saveGame();
+  showScreen('screen-map');
+  renderMap();
+  if(typeof placeMarkerAt === 'function') placeMarkerAt(state.avatarBookIdx, false);
+  devCerrarPanel();
+}
+
+function devBatallaApoc(){
+  devCerrarPanel();
+  startBattle(BOOKS.length - 1);
+}
+
+function devMonedas(){
+  state.coins += 5000;
+  saveGame();
+  const c1 = document.getElementById('coinCount');
+  const c2 = document.getElementById('shopCoinCount');
+  if(c1) c1.textContent = state.coins;
+  if(c2) c2.textContent = state.coins;
+  alert('Monedas: ' + state.coins);
+}
+
+function devVerPromo(){
+  devCerrarPanel();
+  if(typeof mostrarPromo === 'function') mostrarPromo('✨ TRAJE DESTACADO');
+}
 </script>
 
 </body>
