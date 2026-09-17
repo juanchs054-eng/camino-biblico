@@ -4227,7 +4227,40 @@ document.getElementById('toggleVibration').addEventListener('change', function()
 // y funcione (con lo ya visitado) incluso sin conexión.
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    navigator.serviceWorker.register('sw.js').then(reg => {
+
+      // Buscar actualizaciones al abrir y cada 30 minutos si la app queda
+      // abierta. Sin esto, un celular que ya tiene la app instalada puede
+      // seguir con una versión vieja durante días.
+      reg.update().catch(()=>{});
+      setInterval(() => reg.update().catch(()=>{}), 30 * 60 * 1000);
+
+      // Cuando el navegador vuelve del segundo plano también se comprueba.
+      document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState === 'visible') reg.update().catch(()=>{});
+      });
+
+      // Si hay una versión nueva esperando, se activa de inmediato.
+      reg.addEventListener('updatefound', () => {
+        const nuevo = reg.installing;
+        if(!nuevo) return;
+        nuevo.addEventListener('statechange', () => {
+          if(nuevo.state === 'installed' && navigator.serviceWorker.controller){
+            nuevo.postMessage({ tipo: 'ACTIVAR_YA' });
+          }
+        });
+      });
+    }).catch(()=>{});
+
+    // Cuando el service worker nuevo toma el control, se recarga UNA sola vez
+    // para que el jugador vea la versión nueva. El progreso no se toca: vive
+    // en localStorage, que la recarga no borra.
+    let yaRecargado = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if(yaRecargado) return;
+      yaRecargado = true;
+      window.location.reload();
+    });
   });
 }
 </script>

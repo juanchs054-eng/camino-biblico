@@ -23,6 +23,12 @@ self.addEventListener('install', event => {
   );
 });
 
+// El index.html avisa cuando hay una versión nueva instalada y esperando,
+// para no tener que esperar a que el jugador cierre todas las pestañas.
+self.addEventListener('message', event => {
+  if(event.data && event.data.tipo === 'ACTIVAR_YA') self.skipWaiting();
+});
+
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
