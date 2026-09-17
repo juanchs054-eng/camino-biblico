@@ -3769,7 +3769,23 @@ function showQuestion(){
   renderQuestionData(currentQuestionSet[qIndex], false);
 }
 
-function renderQuestionData(qData, isBonus){
+// Devuelve una copia de la pregunta con las opciones en orden aleatorio.
+// Es necesario porque en el banco de preguntas la respuesta correcta casi
+// siempre quedó en la misma posición, y el jugador aprende el patrón.
+function mezclarOpciones(qData){
+  const idx = qData.opts.map((_, i) => i);
+  for(let i = idx.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [idx[i], idx[j]] = [idx[j], idx[i]];
+  }
+  return Object.assign({}, qData, {
+    opts: idx.map(i => qData.opts[i]),
+    correct: idx.indexOf(qData.correct)
+  });
+}
+
+function renderQuestionData(qDataOriginal, isBonus){
+  const qData = mezclarOpciones(qDataOriginal);
   document.getElementById('triviaQuestionText').textContent = (isBonus?'🎁 Bono: ':'') + qData.q;
   const optsBox = document.getElementById('triviaOptions');
   optsBox.innerHTML = '';
@@ -3942,7 +3958,7 @@ function breakShieldAnim(){
 }
 
 function runBattleQuestion(){
-  const qData = battleState.pool[battleState.qi];
+  const qData = mezclarOpciones(battleState.pool[battleState.qi]);
   const timeLimit = battleState.qi === 0 ? 20 : 15;
 
   document.getElementById('battleQText').textContent = qData.q;
@@ -4375,17 +4391,21 @@ function promoNota(st){
   return partes.length ? '✅ ' + partes.join(' y ') + ' que la túnica de hojas.' : '';
 }
 
-function promoImgUrl(o){
+/* Usa exactamente la misma miniatura que la tienda: un recorte de la parte
+   alta del traje, no la figura completa. */
+function promoThumbStyle(o){
+  return outfitThumbStyle(o);
+}
+
+/* ¿Existe arte para este traje en el género elegido? Si no, no se promociona. */
+function promoTieneArte(o){
   const g = (typeof state !== 'undefined' && state.avatar === '👧') ? 'girl' : 'boy';
-  const v = (typeof BUILD_VERSION !== 'undefined') ? BUILD_VERSION : '1';
-  const full = fullbodyFileName(g, o.id, false);
-  if(typeof FULLBODY_CACHE !== 'undefined' && FULLBODY_CACHE[full]) return full + '?' + v;
-  if(o.torsoImg) return IMG_DIR + o.torsoImg + '?' + v;
-  return '';
+  return FULLBODY_CACHE[fullbodyFileName(g, o.id, false)] !== false;
 }
 
 function promoBloqueados(){
-  return PREMIUM_OUTFITS.filter(o => !state.unlockedPremium.includes(o.id));
+  const tiene = (state && state.unlockedPremium) ? state.unlockedPremium : [];
+  return PREMIUM_OUTFITS.filter(o => !tiene.includes(o.id) && promoTieneArte(o));
 }
 
 function promoAlAzar(n){
@@ -4404,10 +4424,9 @@ function abrirPromoModal(titulo){
   if(!locked.length) return false;
   promoDestacado = locked[Math.floor(Math.random() * locked.length)];
   const st = (typeof OUTFIT_STATS !== 'undefined' && OUTFIT_STATS[promoDestacado.id]) || { escudo:0, fuerza:1 };
-  const img = promoImgUrl(promoDestacado);
   const box = document.getElementById('promoImg');
-  if(img){ box.style.backgroundImage = 'url("' + img + '")'; box.textContent = ''; }
-  else { box.style.backgroundImage = ''; box.textContent = '⭐'; }
+  box.textContent = '';
+  box.setAttribute('style', promoThumbStyle(promoDestacado));
 
   document.getElementById('promoBadge').textContent = titulo || '✨ TRAJE DESTACADO';
   document.getElementById('promoName').textContent = promoDestacado.name;
@@ -4441,14 +4460,10 @@ function renderPromoCirculos(){
   const der = document.createElement('div'); der.id = 'promoSideR';
 
   lista.forEach((o, i)=>{
-    const img = promoImgUrl(o);
     const c = document.createElement('div');
     c.className = 'promo-circle';
     c.innerHTML =
-      '<div class="promo-circle-img" style="' +
-        (img ? 'background-image:url(\'' + img + '\')' : '') + '">' +
-        (img ? '' : '⭐') +
-      '</div>' +
+      '<div class="promo-circle-img" style="' + promoThumbStyle(o) + '"></div>' +
       '<div class="promo-circle-price">$' + (o.price / 1000) + 'k</div>';
     c.title = o.name;
     c.onclick = ()=> premiumAction(o.id);
@@ -4486,26 +4501,50 @@ function renderPromoBarra(){
     '</div>';
 }
 
-/* Enganches automáticos. */
-let promoInicioMostrado = false;
+/* Enganches automáticos.
+
+   La ventana se muestra cada vez que se ENTRA a la pantalla del mapa: al
+   empezar, al continuar una partida y al volver de una batalla. Antes se
+   colgaba de renderMap() y a veces no llegaba a ejecutarse, por eso no
+   aparecía de forma constante. */
+let promoOcupado = false;
+
+function mostrarPromo(titulo){
+  if(promoOcupado) return;
+  promoOcupado = true;
+  // Espera a que el arte esté catalogado; si no, no sabríamos qué trajes
+  // tienen imagen y la ventana saldría vacía o no saldría.
+  let intentos = 0;
+  (function intentar(){
+    intentos++;
+    const listos = PREMIUM_OUTFITS.some(o => FULLBODY_CACHE[
+      fullbodyFileName(state.avatar === '👧' ? 'girl' : 'boy', o.id, false)
+    ] !== undefined);
+    if(!listos && intentos < 14){ setTimeout(intentar, 350); return; }
+    promoOcupado = false;
+    if(!abrirPromoModal(titulo)) renderPromoCirculos();
+  })();
+}
+
 (function engancharPromo(){
-  // 1) Al dibujar el mapa: repintar círculos (y ventana la primera vez).
+  // 1) Al dibujar el mapa: mantener los círculos y la barra al día.
   const renderMapOriginal = window.renderMap;
   window.renderMap = function(){
     renderMapOriginal.apply(this, arguments);
-    if(!promoInicioMostrado){
-      promoInicioMostrado = true;
-      setTimeout(()=>{ if(!abrirPromoModal('✨ TRAJE DESTACADO')) renderPromoCirculos(); }, 700);
-    } else {
-      renderPromoCirculos();
-    }
+    renderPromoCirculos();
   };
 
-  // 2) Al volver de una batalla: ventana con otro traje al azar.
-  const backToMapOriginal = window.backToMap;
-  window.backToMap = function(){
-    backToMapOriginal.apply(this, arguments);
-    setTimeout(()=>{ if(!abrirPromoModal('⚔️ ¿LISTO PARA EL SIGUIENTE JEFE?')) renderPromoCirculos(); }, 900);
+  // 2) Cada vez que se entra a la pantalla del mapa.
+  const showScreenOriginal = window.showScreen;
+  let vengoDeBatalla = false;
+  window.showScreen = function(id){
+    showScreenOriginal.apply(this, arguments);
+    if(id === 'screen-battle') vengoDeBatalla = true;
+    if(id === 'screen-map'){
+      const titulo = vengoDeBatalla ? '⚔️ ¿LISTO PARA EL SIGUIENTE JEFE?' : '✨ TRAJE DESTACADO';
+      vengoDeBatalla = false;
+      setTimeout(()=> mostrarPromo(titulo), 700);
+    }
   };
 })();
 </script>
