@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260917-promo1';
+const BUILD_VERSION = '20260917-promo2';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -4592,6 +4592,16 @@ function mostrarPromo(titulo){
       setTimeout(()=> mostrarPromo(titulo), 700);
     }
   };
+
+  // 3) Caso del jugador que YA tiene partida guardada: initApp() lo manda al
+  //    mapa apenas carga la página, y eso ocurre ANTES de que este bloque se
+  //    ejecute, así que los enganches de arriba no alcanzan a dispararse.
+  //    Si al llegar aquí el mapa ya está en pantalla, se lanza a mano.
+  const mapaYaVisible = document.getElementById('screen-map')
+    && document.getElementById('screen-map').classList.contains('active');
+  if(mapaYaVisible){
+    setTimeout(()=> mostrarPromo('✨ TRAJE DESTACADO'), 900);
+  }
 })();
 </script>
 
