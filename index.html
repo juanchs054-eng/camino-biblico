@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-duelo2';
+const BUILD_VERSION = '20260918-duelo3';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -5476,22 +5476,33 @@ function pintarBestiaEnBatalla(){
   }
   #dueloMarca.show{ display:flex; }
 
-  /* El personaje queda en sombra, casi una silueta. */
-  #dueloMarcaCaja{ position:relative; height:62vh; }
+  /* El personaje, en penumbra pero bien visible, recortado contra el negro
+     por un resplandor azulado detrás. Antes quedaba tan oscuro que no se
+     distinguía del fondo. */
+  #dueloMarcaCaja{ position:relative; height:58vh; }
+  #dueloMarcaCaja::before{
+    content:''; position:absolute; left:50%; top:45%;
+    width:150%; height:85%; transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(46,120,200,.34) 0%, rgba(20,50,90,.16) 45%, transparent 72%);
+    z-index:0;
+  }
   #dueloMarcaHeroe{
+    position:relative; z-index:1;
     height:100%; width:auto; display:block;
-    filter:brightness(.16) contrast(1.4);
-    animation:marcaAparecer 1.2s ease-out;
+    filter:brightness(.62) contrast(1.15) saturate(.55)
+           drop-shadow(0 0 18px rgba(46,166,255,.55));
+    animation:marcaAparecer 1.4s ease-out;
   }
   @keyframes marcaAparecer{
     0%{ opacity:0; filter:brightness(0); }
+    60%{ opacity:1; }
     100%{ opacity:1; }
   }
 
   /* La marca, sobre la frente. El porcentaje se ajusta por código según
      la altura real del dibujo en pantalla. */
   #dueloMarcaTxt{
-    position:absolute; left:50%; transform:translateX(-50%);
+    position:absolute; left:50%; z-index:2; transform:translateX(-50%);
     font-size:calc(62vh * 0.055); font-weight:900; color:#2ea6ff;
     letter-spacing:.08em; line-height:1;
     text-shadow:0 0 16px #2ea6ff, 0 0 42px rgba(46,166,255,.85);
