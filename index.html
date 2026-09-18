@@ -122,10 +122,20 @@
   .shop-preview-frame{width:220px; height:322px; border-radius:20px; background:linear-gradient(180deg,#262d5a,#141837); border:1px solid #3a3f6e; display:flex; justify-content:center; align-items:flex-start; padding-top:20px; box-shadow:inset 0 0 30px rgba(0,0,0,0.35);}
   .shop-avatar-big{transform:scale(1.7); transform-origin:top center;}
   .shop-section-title{color:var(--gold); font-size:1rem; margin:22px 0 12px;}
-  .outfit-list{display:flex; flex-direction:column; gap:12px;}
+  /* Tienda en cuadrícula: dos columnas en el móvil, y más si la pantalla
+     da para ello. Así se ven muchos más trajes de un vistazo y la
+     miniatura puede ser grande, que es lo que de verdad vende. */
+  /* Cinco por fila: tarjetas pequeñas, casi solo la miniatura. */
+  .outfit-list{
+    display:grid;
+    grid-template-columns:repeat(5, 1fr);
+    gap:6px;
+  }
   .outfit-card{
-    display:flex; align-items:center; gap:14px; padding:12px 14px; border-radius:14px;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    padding:6px 4px 6px; border-radius:11px;
     background:#1a1e3d; border:1px solid #33375c;
+    text-align:center;
   }
   .outfit-card.equipped{border-color:var(--gold); background:#232a52;}
   .bundle-card{
@@ -142,13 +152,25 @@
   .bundle-price-new{font-size:1.2rem; font-weight:800; color:var(--gold);}
   .bundle-buy-btn{background:var(--gold); color:#1a1206; border:none; border-radius:12px; padding:12px 18px; font-weight:800; font-size:0.95rem; cursor:pointer;}
   .bundle-buy-btn:disabled{opacity:0.6;}
-  .outfit-swatch{width:40px; height:40px; border-radius:10px; flex-shrink:0; border:2px solid rgba(255,255,255,0.15); cursor:pointer;}
-  .outfit-card-body{flex:1;}
-  .outfit-card-name{font-weight:700; font-size:0.92rem; cursor:pointer;}
-  .outfit-card-cost{font-size:0.8rem; color:#b9b6c9; margin-top:2px;}
+  .outfit-swatch{
+    width:100%; aspect-ratio:1/1; height:auto;
+    border-radius:8px; border:1.5px solid rgba(255,255,255,0.15); cursor:pointer;
+  }
+  .outfit-card-body{width:100%;}
+  .outfit-card-name{
+    font-weight:700; font-size:0.56rem; cursor:pointer; line-height:1.15;
+    /* Dos renglones como mucho, para que todas midan igual */
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    overflow:hidden; min-height:2.3em;
+  }
+  /* En tarjetas tan pequeñas el texto del precio no cabe: el dato ya está
+     en el botón, así que se oculta. */
+  .outfit-card-cost{display:none;}
   .outfit-btn{
-    border:none; border-radius:10px; padding:9px 14px; font-family:inherit; font-weight:700;
-    font-size:0.85rem; cursor:pointer; color:#1a1206; background:linear-gradient(135deg,#f2ce7e,var(--gold));
+    width:100%; margin-top:auto;
+    border:none; border-radius:7px; padding:5px 2px; font-family:inherit; font-weight:700;
+    font-size:0.56rem; cursor:pointer; color:#1a1206; background:linear-gradient(135deg,#f2ce7e,var(--gold));
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .outfit-btn.owned{background:#3a3d5c; color:var(--parchment);}
   .outfit-btn:disabled{opacity:0.4;}
@@ -3078,7 +3100,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-duelo14';
+const BUILD_VERSION = '20260918-tienda2';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
