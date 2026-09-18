@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-duelo13';
+const BUILD_VERSION = '20260918-duelo14';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -5565,9 +5565,9 @@ window.PIEZAS_FINAL.push('B'); sellarVersion();
 /* ---- Ajustes del duelo ----
    fuerza: cuánto aleja cada pulsación.
    avance: cuánto se acerca sola por segundo. */
-const DUELO_FUERZA   = 0.040;   // cada pulsación aleja más que antes
-const DUELO_AVANCE   = 0.115;   // y la Imagen avanza más despacio
-const DUELO_INICIAL  = 0.55;   // 0 = encima del jugador, 1 = fuera de pantalla
+const DUELO_FUERZA   = 0.033;   // cada pulsación aleja algo menos
+const DUELO_AVANCE   = 0.150;   // y la Imagen avanza más deprisa
+const DUELO_INICIAL  = 0.48;   // 0 = encima del jugador, 1 = fuera de pantalla
 
 let dueloEstado = null;
 
