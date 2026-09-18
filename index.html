@@ -3097,7 +3097,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-tienda4';
+const BUILD_VERSION = '20260918-tienda5';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -5595,7 +5595,7 @@ function abrirDueloBestia(){
   const img = document.getElementById('dueloImg');
   const heroe = document.getElementById('dueloHeroe');
 
-  img.src = bestiaRuta(BESTIA_VIVA);
+  img.src = bestiaRuta(BESTIA_IA);   // la que lleva la marca en la frente
   const g = state.avatar === '👧' ? 'girl' : 'boy';
   heroe.src = fullbodyFileName(g, state.equippedOutfit || 'hojas', false) + '?' + BUILD_VERSION;
 
