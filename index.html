@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-duelo3';
+const BUILD_VERSION = '20260918-duelo7';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -5541,9 +5541,9 @@ function pintarBestiaEnBatalla(){
 /* ---- Ajustes del duelo ----
    fuerza: cuánto aleja cada pulsación.
    avance: cuánto se acerca sola por segundo. */
-const DUELO_FUERZA   = 0.028;
-const DUELO_AVANCE   = 0.16;
-const DUELO_INICIAL  = 0.5;    // 0 = encima del jugador, 1 = fuera de pantalla
+const DUELO_FUERZA   = 0.040;   // cada pulsación aleja más que antes
+const DUELO_AVANCE   = 0.115;   // y la Imagen avanza más despacio
+const DUELO_INICIAL  = 0.55;   // 0 = encima del jugador, 1 = fuera de pantalla
 
 let dueloEstado = null;
 
@@ -5591,7 +5591,7 @@ function dueloPaso(ahora){
   dueloEstado.ultimo = ahora;
 
   // Se acerca sola; cuanto más cerca, más rápido avanza.
-  dueloEstado.dist -= DUELO_AVANCE * dt * (1.35 - dueloEstado.dist * 0.5);
+  dueloEstado.dist -= DUELO_AVANCE * dt * (1.20 - dueloEstado.dist * 0.45);
   const d = dueloEstado.dist;
 
   const img = document.getElementById('dueloImg');
@@ -5684,13 +5684,26 @@ function dueloPerder(){
    completos la cabeza ocupa la parte alta, así que la marca va a un 7% de
    la altura total, centrada. Se recalcula al cargar la imagen porque el
    alto en pantalla cambia según el teléfono. */
+/* Altura de la frente, como proporción del alto del dibujo. A esta fase
+   solo se puede llegar con la Armadura de Dios o con el traje de Jesús,
+   que son los únicos que vencen al Dragón, así que basta con esos dos. */
+const FRENTE_POR_TRAJE = {
+  'armadura-Dios': 0.145,   // el casco va bajo: encima lleva la espada en llamas
+  'jesus':         0.085
+};
+const FRENTE_POR_DEFECTO = 0.085;
+
 function colocarMarcaEnLaFrente(){
   const img = document.getElementById('dueloMarcaHeroe');
   const txt = document.getElementById('dueloMarcaTxt');
   function ubicar(){
     const alto = img.clientHeight || img.naturalHeight || 1;
-    txt.style.top = (alto * 0.068) + 'px';
-    txt.style.fontSize = (alto * 0.055) + 'px';
+    const traje = state.equippedOutfit || 'hojas';
+    const prop = FRENTE_POR_TRAJE[traje] !== undefined
+      ? FRENTE_POR_TRAJE[traje]
+      : FRENTE_POR_DEFECTO;
+    txt.style.top = (alto * prop) + 'px';
+    txt.style.fontSize = (alto * 0.048) + 'px';
   }
   if(img.complete && img.naturalWidth) ubicar();
   img.onload = ubicar;
