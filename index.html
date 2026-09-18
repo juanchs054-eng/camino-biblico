@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-duelo9';
+const BUILD_VERSION = '20260918-duelo11';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -5463,10 +5463,16 @@ function pintarBestiaEnBatalla(){
   #dueloBtn:active{ transform:scale(.93); }
 
   /* El jugador al rojo vivo cuando la Imagen está encima */
+  /* El personaje se sitúa en la franja que queda entre el botón y la mitad
+     de la pantalla, con alto máximo para que nunca se solape con el botón
+     ni se salga por arriba (la Armadura de Dios es el dibujo más alto por
+     la espada en llamas). */
   #dueloHeroe{
-    position:absolute; left:50%; bottom:calc(9vh + 176px); z-index:3;
-    transform:translateX(-50%); height:20vh; width:auto; opacity:.95;
-    pointer-events:none;
+    position:absolute; left:50%; bottom:calc(9vh + 182px); z-index:3;
+    transform:translateX(-50%);
+    height:min(22vh, 150px); width:auto; max-width:46vw;
+    object-fit:contain; object-position:bottom;
+    opacity:.95; pointer-events:none;
   }
 
   /* Pantalla negra y marca final */
@@ -5696,9 +5702,9 @@ function dueloPerder(){
        espada ocupa la mitad izquierda y la cabeza queda a la derecha. */
 const FRENTE_POR_TRAJE = {
   'armadura-Dios': { y: 0.325, x: 0.075 },
-  'jesus':         { y: 0.182, x: 0.025 }
+  'jesus':         { y: 0.168, x: 0.055 }
 };
-const FRENTE_POR_DEFECTO = { y: 0.182, x: 0 };
+const FRENTE_POR_DEFECTO = { y: 0.168, x: 0 };
 
 function colocarMarcaEnLaFrente(){
   const img = document.getElementById('dueloMarcaHeroe');
@@ -5732,26 +5738,44 @@ function mostrarApocDerrotaBestia(){
 let dueloFinalReal = function(){};
 
 (function engancharDuelo(){
-  // showGrandFinale ya viene envuelto por la fase de la Bestia. Aquí se
-  // envuelve otra vez: al vencer a la Imagen, en lugar del confeti arranca
-  // el duelo; el confeti queda para cuando se gane el duelo.
-  // Importante: apocFase2 se deja en true al llamar a finalPrevio, porque
-  // esa capa lo usa para saber que ya se pasó la fase de la Bestia.
-  let apocDuelo = false;
+  /* El final de Apocalipsis tiene tres tramos y se llega a todos por la
+     misma puerta (showGrandFinale). Antes se coordinaban con banderas
+     sueltas y bastaba con volver al mapa para descolocarlas; ahora hay un
+     único contador, que es imposible que se descuadre:
+
+       paso 0 → se venció al Gran Dragón  → aparece la Imagen de la Bestia
+       paso 1 → se venció a la Imagen     → duelo del botón
+       paso 2 → se ganó el duelo          → Gran Final con confeti          */
+  let apocPaso = 0;
   const finalPrevio = window.showGrandFinale;
 
   dueloFinalReal = function(){
-    apocDuelo = false;
+    apocPaso = 0;
+    apocFase2 = true;        // la capa anterior lo necesita para dejar pasar
     finalPrevio.call(window);
   };
 
   window.showGrandFinale = function(){
-    if(apocFase2 && !apocDuelo){
-      apocDuelo = true;
+    if(apocPaso === 0){
+      apocPaso = 1;
+      mostrarIntroBestia();
+      return;
+    }
+    if(apocPaso === 1){
+      apocPaso = 2;
       abrirDueloBestia();
       return;
     }
+    apocPaso = 0;
+    apocFase2 = true;
     return finalPrevio.apply(this, arguments);
+  };
+
+  // Salir al mapa reinicia la secuencia: al volver se empieza por el Dragón.
+  const backToMapPrevio = window.backToMap;
+  window.backToMap = function(){
+    apocPaso = 0;
+    return backToMapPrevio.apply(this, arguments);
   };
 })();
 </script>
