@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-duelo11';
+const BUILD_VERSION = '20260918-duelo12';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -4410,7 +4410,16 @@ if('serviceWorker' in navigator){
 </style>
 <div id="sellitoVersion"></div>
 <script>
-document.getElementById('sellitoVersion').textContent = 'v ' + BUILD_VERSION;
+/* El sellito muestra la versión y, detrás, una marca por cada pieza del
+   final que se haya cargado: D = secuencia del Dragón, B = la Bestia,
+   U = duelo del botón. Si alguna falta, el celular está usando una copia
+   guardada antigua del juego: basta con recargar con datos activos. */
+window.PIEZAS_FINAL = [];
+function sellarVersion(){
+  const s = document.getElementById('sellitoVersion');
+  if(s) s.textContent = 'v ' + BUILD_VERSION + (window.PIEZAS_FINAL.length ? ' ' + window.PIEZAS_FINAL.join('') : ' —');
+}
+sellarVersion();
 
 /* Descripción de cada traje (el personaje bíblico). */
 const PROMO_DESC = {
@@ -4985,6 +4994,7 @@ function cerrarApocDerrota(){
 }
 
 /* ===== Enganches ===== */
+window.PIEZAS_FINAL.push('D'); sellarVersion();
 (function engancharApocalipsis(){
   const startBattleOriginal = window.startBattle;
   window.startBattle = function(bookIdx){
@@ -5353,6 +5363,7 @@ function pintarBestiaEnBatalla(){
   }
 }
 
+window.PIEZAS_FINAL.push('B'); sellarVersion();
 (function engancharBestia(){
   // Al vencer al Dragón: en vez del Gran Final, aparece la Bestia.
   // Al vencer a la Bestia: ahí sí, Gran Final.
@@ -5701,8 +5712,8 @@ function dueloPerder(){
        necesario porque en la Armadura el caballero no va centrado: la
        espada ocupa la mitad izquierda y la cabeza queda a la derecha. */
 const FRENTE_POR_TRAJE = {
-  'armadura-Dios': { y: 0.325, x: 0.075 },
-  'jesus':         { y: 0.168, x: 0.055 }
+  'armadura-Dios': { y: 0.318, x: 0.105 },
+  'jesus':         { y: 0.176, x: 0.050 }
 };
 const FRENTE_POR_DEFECTO = { y: 0.168, x: 0 };
 
@@ -5737,6 +5748,7 @@ function mostrarApocDerrotaBestia(){
 /* Gran Final de verdad (el original con confeti). */
 let dueloFinalReal = function(){};
 
+window.PIEZAS_FINAL.push('U'); sellarVersion();
 (function engancharDuelo(){
   /* El final de Apocalipsis tiene tres tramos y se llega a todos por la
      misma puerta (showGrandFinale). Antes se coordinaban con banderas
