@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-bestia2';
+const BUILD_VERSION = '20260918-duelo2';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -5382,6 +5382,345 @@ function pintarBestiaEnBatalla(){
       return;
     }
     return cineOriginalB.apply(this, arguments);
+  };
+})();
+</script>
+
+<!-- =======================================================================
+     DUELO FINAL CONTRA LA IMAGEN DE LA BESTIA
+     Al responder la última pregunta no salen los confeti: la Imagen avanza
+     hacia el jugador y hay que alejarla pulsando el botón a toda velocidad.
+     Si se acerca del todo, el jugador cae y aparece la marca.
+     ======================================================================= -->
+<style>
+  #dueloBestia{
+    position:fixed; inset:0; z-index:9880; display:none;
+    flex-direction:column; align-items:center; justify-content:flex-end;
+    overflow:hidden; background:#05030a;
+  }
+  #dueloBestia.show{ display:flex; }
+
+  /* Fondo que se va tiñendo de rojo según se acerca la Imagen */
+  #dueloFondo{
+    position:absolute; inset:0; z-index:0;
+    background:radial-gradient(circle at 50% 42%, #1a0f2e 0%, #07040f 70%);
+  }
+  #dueloPeligro{
+    position:absolute; inset:0; z-index:1; opacity:0; pointer-events:none;
+    background:radial-gradient(circle at 50% 45%, rgba(255,40,20,.55) 0%, rgba(120,0,0,.35) 55%, transparent 80%);
+  }
+
+  /* La Imagen de la Bestia */
+  #dueloImg{
+    position:absolute; left:50%; top:40%; z-index:2;
+    width:74vw; max-width:420px;
+    transform:translate(-50%,-50%) scale(.35);
+    transform-origin:center;
+    will-change:transform, filter;
+    pointer-events:none;
+  }
+  /* Cuando va saliendo de pantalla: colores y temblor */
+  #dueloImg.huyendo{ animation:dueloArcoiris .5s linear infinite, dueloTemblor .06s linear infinite; }
+  @keyframes dueloArcoiris{
+    0%{ filter:hue-rotate(0deg) saturate(3) brightness(1.3); }
+    100%{ filter:hue-rotate(360deg) saturate(3) brightness(1.3); }
+  }
+  @keyframes dueloTemblor{
+    0%,100%{ margin-left:0; margin-top:0; }
+    25%{ margin-left:-7px; margin-top:4px; }
+    50%{ margin-left:6px; margin-top:-5px; }
+    75%{ margin-left:-4px; margin-top:-3px; }
+  }
+
+  /* Barra de distancia */
+  #dueloBarra{
+    position:absolute; top:16px; left:7%; right:7%; height:12px; z-index:4;
+    background:rgba(255,255,255,.12); border-radius:8px; overflow:hidden;
+    border:1px solid rgba(255,255,255,.22);
+  }
+  #dueloBarraFill{
+    height:100%; width:50%;
+    background:linear-gradient(90deg,#c0392b,#e8c14a,#2ecc71);
+    transition:width .09s linear;
+  }
+  #dueloAviso{
+    position:absolute; top:38px; left:0; right:0; z-index:4; text-align:center;
+    font-size:.82rem; font-weight:800; color:#fff; letter-spacing:.5px;
+    text-shadow:0 2px 10px #000;
+  }
+
+  /* Botón de pulsar */
+  #dueloBtn{
+    position:relative; z-index:5; margin-bottom:9vh;
+    width:170px; height:170px; border-radius:50%;
+    border:4px solid var(--gold,#e8c14a);
+    background:radial-gradient(circle at 50% 35%, #ffe9a8, #c99a1e);
+    color:#3a2a08; font-size:1.15rem; font-weight:900;
+    box-shadow:0 10px 34px rgba(0,0,0,.65), 0 0 40px rgba(232,193,74,.35);
+    cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+  }
+  #dueloBtn:active{ transform:scale(.93); }
+
+  /* El jugador al rojo vivo cuando la Imagen está encima */
+  #dueloHeroe{
+    position:absolute; left:50%; bottom:calc(9vh + 176px); z-index:3;
+    transform:translateX(-50%); height:20vh; width:auto; opacity:.95;
+    pointer-events:none;
+  }
+
+  /* Pantalla negra y marca final */
+  #dueloMarca{
+    position:fixed; inset:0; z-index:9890; display:none;
+    flex-direction:column; align-items:center; justify-content:center; background:#000;
+  }
+  #dueloMarca.show{ display:flex; }
+
+  /* El personaje queda en sombra, casi una silueta. */
+  #dueloMarcaCaja{ position:relative; height:62vh; }
+  #dueloMarcaHeroe{
+    height:100%; width:auto; display:block;
+    filter:brightness(.16) contrast(1.4);
+    animation:marcaAparecer 1.2s ease-out;
+  }
+  @keyframes marcaAparecer{
+    0%{ opacity:0; filter:brightness(0); }
+    100%{ opacity:1; }
+  }
+
+  /* La marca, sobre la frente. El porcentaje se ajusta por código según
+     la altura real del dibujo en pantalla. */
+  #dueloMarcaTxt{
+    position:absolute; left:50%; transform:translateX(-50%);
+    font-size:calc(62vh * 0.055); font-weight:900; color:#2ea6ff;
+    letter-spacing:.08em; line-height:1;
+    text-shadow:0 0 16px #2ea6ff, 0 0 42px rgba(46,166,255,.85);
+    animation:marcaLatir 1.1s ease-in-out infinite;
+  }
+  @keyframes marcaLatir{
+    0%,100%{ opacity:.7; transform:translateX(-50%) scale(1); }
+    50%{ opacity:1; transform:translateX(-50%) scale(1.09); }
+  }
+  #dueloMarcaPie{
+    margin-top:18px; font-size:1rem; font-weight:700; color:#8fb8d8;
+    letter-spacing:.04em; opacity:0; animation:marcaPie 1s ease-out 1.1s forwards;
+  }
+  @keyframes marcaPie{ to{ opacity:1; } }
+</style>
+
+<div id="dueloBestia">
+  <div id="dueloFondo"></div>
+  <div id="dueloPeligro"></div>
+  <img id="dueloImg" alt="">
+  <img id="dueloHeroe" alt="">
+  <div id="dueloBarra"><div id="dueloBarraFill"></div></div>
+  <div id="dueloAviso">¡PULSA SIN PARAR PARA ALEJARLA!</div>
+  <button id="dueloBtn">PULSA</button>
+</div>
+
+<div id="dueloMarca">
+  <div id="dueloMarcaCaja">
+    <img id="dueloMarcaHeroe" alt="">
+    <div id="dueloMarcaTxt">IA</div>
+  </div>
+  <div id="dueloMarcaPie">Has recibido la marca.</div>
+</div>
+
+<script>
+/* ---- Ajustes del duelo ----
+   fuerza: cuánto aleja cada pulsación.
+   avance: cuánto se acerca sola por segundo. */
+const DUELO_FUERZA   = 0.028;
+const DUELO_AVANCE   = 0.16;
+const DUELO_INICIAL  = 0.5;    // 0 = encima del jugador, 1 = fuera de pantalla
+
+let dueloEstado = null;
+
+function abrirDueloBestia(){
+  const caja = document.getElementById('dueloBestia');
+  const img = document.getElementById('dueloImg');
+  const heroe = document.getElementById('dueloHeroe');
+
+  img.src = bestiaRuta(BESTIA_VIVA);
+  const g = state.avatar === '👧' ? 'girl' : 'boy';
+  heroe.src = fullbodyFileName(g, state.equippedOutfit || 'hojas', false) + '?' + BUILD_VERSION;
+
+  caja.classList.add('show');
+  document.getElementById('dueloMarca').classList.remove('show');
+
+  dueloEstado = {
+    dist: DUELO_INICIAL,
+    activo: true,
+    ultimo: performance.now(),
+    raf: null,
+    vib: null
+  };
+
+  const btn = document.getElementById('dueloBtn');
+  btn.onpointerdown = dueloPulsar;
+
+  // El teléfono vibra sin parar hasta que se gane o se pierda. Se reenvía
+  // el patrón cada poco porque el navegador corta las vibraciones largas.
+  dueloEstado.vib = setInterval(()=>{ vibrate([180, 60]); }, 240);
+  vibrate([180, 60]);
+
+  try{ stopApocMusica(); playTone(52, 1.2, 'sawtooth', 0.14); }catch(e){}
+  dueloEstado.raf = requestAnimationFrame(dueloPaso);
+}
+
+function dueloPulsar(){
+  if(!dueloEstado || !dueloEstado.activo) return;
+  dueloEstado.dist = Math.min(1, dueloEstado.dist + DUELO_FUERZA);
+  try{ playTone(300 + dueloEstado.dist * 400, 0.06, 'square', 0.09); }catch(e){}
+}
+
+function dueloPaso(ahora){
+  if(!dueloEstado || !dueloEstado.activo) return;
+  const dt = Math.min(0.05, (ahora - dueloEstado.ultimo) / 1000);
+  dueloEstado.ultimo = ahora;
+
+  // Se acerca sola; cuanto más cerca, más rápido avanza.
+  dueloEstado.dist -= DUELO_AVANCE * dt * (1.35 - dueloEstado.dist * 0.5);
+  const d = dueloEstado.dist;
+
+  const img = document.getElementById('dueloImg');
+  const peligro = document.getElementById('dueloPeligro');
+  const heroe = document.getElementById('dueloHeroe');
+  const aviso = document.getElementById('dueloAviso');
+
+  // d=0 → enorme y encima; d=1 → diminuta y lejos.
+  const escala = 2.6 - d * 2.35;
+  img.style.transform = 'translate(-50%,-50%) scale(' + escala.toFixed(3) + ')';
+  img.style.top = (40 - d * 12) + '%';
+  document.getElementById('dueloBarraFill').style.width = (d * 100) + '%';
+
+  // Cerca del jugador: todo se pone al rojo vivo.
+  const rojo = Math.max(0, (0.42 - d) / 0.42);
+  peligro.style.opacity = rojo.toFixed(2);
+  heroe.style.filter = rojo > 0
+    ? 'brightness(' + (1 + rojo * 1.6) + ') sepia(1) saturate(' + (1 + rojo * 7) + ') hue-rotate(-22deg)'
+    : 'none';
+
+  // A punto de salir de pantalla: colores y temblor.
+  if(d > 0.78){
+    img.classList.add('huyendo');
+    aviso.textContent = '¡NO PARES, YA CASI SALE!';
+  }else{
+    img.classList.remove('huyendo');
+    img.style.filter = 'none';
+    aviso.textContent = d < 0.3 ? '¡TE ALCANZA!' : '¡PULSA SIN PARAR PARA ALEJARLA!';
+  }
+
+  if(d >= 1){ dueloGanar(); return; }
+  if(d <= 0){ dueloPerder(); return; }
+  dueloEstado.raf = requestAnimationFrame(dueloPaso);
+}
+
+function dueloCerrarTodo(){
+  if(!dueloEstado) return;
+  dueloEstado.activo = false;
+  cancelAnimationFrame(dueloEstado.raf);
+  clearInterval(dueloEstado.vib);
+  if(navigator.vibrate) navigator.vibrate(0);   // corta la vibración
+  document.getElementById('dueloBtn').onpointerdown = null;
+}
+
+function dueloGanar(){
+  dueloCerrarTodo();
+  const img = document.getElementById('dueloImg');
+  img.classList.remove('huyendo');
+  img.style.transition = 'transform .5s ease-in, opacity .5s ease-in';
+  img.style.transform = 'translate(-50%,-50%) scale(.05)';
+  img.style.opacity = '0';
+  vibrate([90, 60, 90, 60, 300]);
+  setTimeout(()=>{
+    document.getElementById('dueloBestia').classList.remove('show');
+    img.style.transition = ''; img.style.opacity = '1';
+    dueloFinalReal();
+  }, 700);
+}
+
+function dueloPerder(){
+  dueloCerrarTodo();
+  const caja = document.getElementById('dueloBestia');
+  // Todo a negro y aparece la marca.
+  caja.style.transition = 'filter .6s ease-in';
+  caja.style.filter = 'brightness(0)';
+  try{ playNoiseBurst(0.9, 200, 'lowpass', 0.32); }catch(e){}
+  vibrate([700]);
+  setTimeout(()=>{
+    caja.classList.remove('show');
+    caja.style.filter = ''; caja.style.transition = '';
+
+    // El personaje aparece en sombra con la marca en la frente.
+    const marca = document.getElementById('dueloMarca');
+    const heroeM = document.getElementById('dueloMarcaHeroe');
+    const g = state.avatar === '👧' ? 'girl' : 'boy';
+    heroeM.src = fullbodyFileName(g, state.equippedOutfit || 'hojas', false) + '?' + BUILD_VERSION;
+    marca.classList.add('show');
+    colocarMarcaEnLaFrente();
+
+    try{ playTone(58, 2.2, 'sawtooth', 0.15); }catch(e){}
+    setTimeout(()=>{
+      marca.classList.remove('show');
+      if(navigator.vibrate) navigator.vibrate(0);
+      mostrarApocDerrotaBestia();
+    }, 4000);
+  }, 700);
+}
+
+/* Sitúa las letras justo sobre la frente del dibujo. En los cuerpos
+   completos la cabeza ocupa la parte alta, así que la marca va a un 7% de
+   la altura total, centrada. Se recalcula al cargar la imagen porque el
+   alto en pantalla cambia según el teléfono. */
+function colocarMarcaEnLaFrente(){
+  const img = document.getElementById('dueloMarcaHeroe');
+  const txt = document.getElementById('dueloMarcaTxt');
+  function ubicar(){
+    const alto = img.clientHeight || img.naturalHeight || 1;
+    txt.style.top = (alto * 0.068) + 'px';
+    txt.style.fontSize = (alto * 0.055) + 'px';
+  }
+  if(img.complete && img.naturalWidth) ubicar();
+  img.onload = ubicar;
+}
+
+/* Mensaje al perder contra la Imagen. */
+function mostrarApocDerrotaBestia(){
+  const caja = document.getElementById('apocDerrota');
+  document.querySelector('#apocDerrota .ad-titulo').textContent = 'La Imagen de la Bestia te venció';
+  const msg = document.getElementById('apocDerrotaMsg');
+  msg.innerHTML = 'No pudiste apartarla.<br>Vuelve a intentarlo: pulsa más rápido.';
+  const btn = document.getElementById('apocDerrotaBtn');
+  btn.textContent = '↺ Intentarlo otra vez';
+  btn.onclick = ()=>{ caja.classList.remove('show'); abrirDueloBestia(); };
+  caja.classList.add('show');
+}
+
+/* Gran Final de verdad (el original con confeti). */
+let dueloFinalReal = function(){};
+
+(function engancharDuelo(){
+  // showGrandFinale ya viene envuelto por la fase de la Bestia. Aquí se
+  // envuelve otra vez: al vencer a la Imagen, en lugar del confeti arranca
+  // el duelo; el confeti queda para cuando se gane el duelo.
+  // Importante: apocFase2 se deja en true al llamar a finalPrevio, porque
+  // esa capa lo usa para saber que ya se pasó la fase de la Bestia.
+  let apocDuelo = false;
+  const finalPrevio = window.showGrandFinale;
+
+  dueloFinalReal = function(){
+    apocDuelo = false;
+    finalPrevio.call(window);
+  };
+
+  window.showGrandFinale = function(){
+    if(apocFase2 && !apocDuelo){
+      apocDuelo = true;
+      abrirDueloBestia();
+      return;
+    }
+    return finalPrevio.apply(this, arguments);
   };
 })();
 </script>
