@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260917-dev2';
+const BUILD_VERSION = '20260917-dev4';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -4618,9 +4618,11 @@ function mostrarPromo(titulo){
   #apocCine.show{ display:flex; }
   #apocCineImg{
     position:absolute; top:0; left:0; width:100%; height:100%;
-    object-fit:cover;
+    /* "contain" muestra la imagen COMPLETA (con franjas negras arriba y
+       abajo si hace falta). Con "cover" se ampliaba y se recortaban los
+       bordes, que era lo que se veía descentrado. */
+    object-fit:contain;
     opacity:0; transition:opacity .12s linear;
-    transform:scale(1.04);
   }
   #apocCineImg.on{ opacity:1; }
   #apocCineFlash{
@@ -4706,7 +4708,11 @@ const APOC_TEXTOS = [
   'Ha llegado la última batalla.'
 ];
 const APOC_ID = 'armadura-Dios';   // traje requerido
-const APOC_MS = 700;               // duración de cada fotograma
+/* Duración de cada fotograma, en milisegundos. La primera imagen del
+   dragón se queda fija 3,5 segundos para que se aprecie; las demás pasan
+   más lento que antes para que se lea el relato. */
+const APOC_DURACION = [3500, 1400, 1400, 1400, 1400, 1400, 2200];
+const APOC_MS = 1400;              // duración por defecto
 
 /* Precarga: sin esto los primeros fotogramas saldrían en negro. */
 let apocPrecargado = false;
@@ -4807,7 +4813,7 @@ function reproducirApocCine(alTerminar){
     vibrate([40]);
 
     i++;
-    apocCineTimer = setTimeout(siguiente, APOC_MS);
+    apocCineTimer = setTimeout(siguiente, APOC_DURACION[i - 1] || APOC_MS);
   }
   siguiente();
 }
@@ -4854,22 +4860,28 @@ function cerrarApocDerrota(){
   const startBattleOriginal = window.startBattle;
   window.startBattle = function(bookIdx){
     if(!esApocalipsis(bookIdx)){ return startBattleOriginal.apply(this, arguments); }
+    // En Apocalipsis la secuencia ya se reprodujo en lugar de la cinemática
+    // normal (ver el enganche de playIntroCinematic más abajo), así que aquí
+    // solo se decide si hay batalla o derrota.
+    stopAmbient();
+    startApocMusica();
+    if(llevaArmadura()){
+      startBattleOriginal.call(window, bookIdx);
+    }else{
+      showScreen('screen-battle');
+      mostrarApocDerrota();
+    }
+  };
 
-    // Jefe final: primero la secuencia, con su propia música.
+  // En Apocalipsis NO se usa la cinemática del bosque y el héroe: en su
+  // lugar va la secuencia del Gran Dragón.
+  const cineOriginal = window.playIntroCinematic;
+  window.playIntroCinematic = function(bookIdx, callback){
+    if(!esApocalipsis(bookIdx)){ return cineOriginal.apply(this, arguments); }
     precargarApoc();
     stopAmbient();
     startApocMusica();
-    showScreen('screen-battle');
-
-    reproducirApocCine(()=>{
-      if(llevaArmadura()){
-        // Va equipado: batalla normal (la música apocalíptica sigue de fondo).
-        startBattleOriginal.call(window, bookIdx);
-      }else{
-        // Sin la armadura no hay nada que hacer contra el Dragón.
-        mostrarApocDerrota();
-      }
-    });
+    reproducirApocCine(()=>{ if(typeof callback === 'function') callback(); });
   };
 
   // Al salir de la pantalla de batalla, cortar la música de Apocalipsis.
