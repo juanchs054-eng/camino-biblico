@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-duelo7';
+const BUILD_VERSION = '20260918-duelo8';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -5581,7 +5581,10 @@ function abrirDueloBestia(){
 
 function dueloPulsar(){
   if(!dueloEstado || !dueloEstado.activo) return;
-  dueloEstado.dist = Math.min(1, dueloEstado.dist + DUELO_FUERZA);
+  // Sin tope: antes se limitaba a 1 y, como acto seguido la Imagen restaba
+  // su avance, el valor caía otra vez y ganar era imposible.
+  dueloEstado.dist += DUELO_FUERZA;
+  if(dueloEstado.dist >= 1){ dueloGanar(); return; }
   try{ playTone(300 + dueloEstado.dist * 400, 0.06, 'square', 0.09); }catch(e){}
 }
 
@@ -5603,7 +5606,7 @@ function dueloPaso(ahora){
   const escala = 2.6 - d * 2.35;
   img.style.transform = 'translate(-50%,-50%) scale(' + escala.toFixed(3) + ')';
   img.style.top = (40 - d * 12) + '%';
-  document.getElementById('dueloBarraFill').style.width = (d * 100) + '%';
+  document.getElementById('dueloBarraFill').style.width = (Math.min(1, d) * 100) + '%';
 
   // Cerca del jugador: todo se pone al rojo vivo.
   const rojo = Math.max(0, (0.42 - d) / 0.42);
@@ -5688,10 +5691,12 @@ function dueloPerder(){
    solo se puede llegar con la Armadura de Dios o con el traje de Jesús,
    que son los únicos que vencen al Dragón, así que basta con esos dos. */
 const FRENTE_POR_TRAJE = {
-  'armadura-Dios': 0.145,   // el casco va bajo: encima lleva la espada en llamas
-  'jesus':         0.085
+  // Medido sobre el propio dibujo: el casco empieza cerca del 26% de la
+  // altura porque encima lleva toda la espada en llamas.
+  'armadura-Dios': 0.305,
+  'jesus':         0.155
 };
-const FRENTE_POR_DEFECTO = 0.085;
+const FRENTE_POR_DEFECTO = 0.155;
 
 function colocarMarcaEnLaFrente(){
   const img = document.getElementById('dueloMarcaHeroe');
