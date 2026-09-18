@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-duelo8';
+const BUILD_VERSION = '20260918-duelo9';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -5690,13 +5690,15 @@ function dueloPerder(){
 /* Altura de la frente, como proporción del alto del dibujo. A esta fase
    solo se puede llegar con la Armadura de Dios o con el traje de Jesús,
    que son los únicos que vencen al Dragón, así que basta con esos dos. */
+/* y = altura de la frente (proporción del alto del dibujo)
+   x = desplazamiento lateral respecto al centro (proporción del ancho),
+       necesario porque en la Armadura el caballero no va centrado: la
+       espada ocupa la mitad izquierda y la cabeza queda a la derecha. */
 const FRENTE_POR_TRAJE = {
-  // Medido sobre el propio dibujo: el casco empieza cerca del 26% de la
-  // altura porque encima lleva toda la espada en llamas.
-  'armadura-Dios': 0.305,
-  'jesus':         0.155
+  'armadura-Dios': { y: 0.325, x: 0.075 },
+  'jesus':         { y: 0.182, x: 0.025 }
 };
-const FRENTE_POR_DEFECTO = 0.155;
+const FRENTE_POR_DEFECTO = { y: 0.182, x: 0 };
 
 function colocarMarcaEnLaFrente(){
   const img = document.getElementById('dueloMarcaHeroe');
@@ -5704,10 +5706,10 @@ function colocarMarcaEnLaFrente(){
   function ubicar(){
     const alto = img.clientHeight || img.naturalHeight || 1;
     const traje = state.equippedOutfit || 'hojas';
-    const prop = FRENTE_POR_TRAJE[traje] !== undefined
-      ? FRENTE_POR_TRAJE[traje]
-      : FRENTE_POR_DEFECTO;
-    txt.style.top = (alto * prop) + 'px';
+    const pos = FRENTE_POR_TRAJE[traje] || FRENTE_POR_DEFECTO;
+    const ancho = img.clientWidth || img.naturalWidth || 1;
+    txt.style.top = (alto * pos.y) + 'px';
+    txt.style.left = 'calc(50% + ' + (ancho * pos.x) + 'px)';
     txt.style.fontSize = (alto * 0.048) + 'px';
   }
   if(img.complete && img.naturalWidth) ubicar();
