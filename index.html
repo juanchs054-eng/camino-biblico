@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260917-dev4';
+const BUILD_VERSION = '20260917-dev6';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -4325,8 +4325,12 @@ if('serviceWorker' in navigator){
   .promo-close{ background:rgba(255,255,255,.12); color:#ccc; }
 
   /* ---- Círculos fijos a los lados del mapa ---- */
+  /* position:fixed las ancla a la PANTALLA, no al camino: así se quedan
+     visibles aunque el jugador baje hasta Apocalipsis. Cuelgan de
+     #screen-map, que está oculto en las demás pantallas, por lo que no
+     aparecen en la tienda ni en la batalla. */
   #promoSideL, #promoSideR{
-    position:absolute; top:50%; transform:translateY(-50%);
+    position:fixed; top:50%; transform:translateY(-50%);
     display:flex; flex-direction:column; gap:14px; z-index:6;
     pointer-events:none;
   }
@@ -4491,7 +4495,7 @@ function closePromoModal(){ cerrarPromo(); renderPromoCirculos(); }
 
 /* 4 círculos fijos: 2 a cada lado del camino. */
 function renderPromoCirculos(){
-  const cont = document.querySelector('#screen-map .map-scroll');
+  const cont = document.getElementById('screen-map');
   if(!cont) return;
   ['promoSideL','promoSideR'].forEach(id => { const e = document.getElementById(id); if(e) e.remove(); });
 
@@ -4642,6 +4646,55 @@ function mostrarPromo(titulo){
   }
   #apocCineTxt.on{ opacity:1; }
 
+  /* ---- El personaje recibiendo el fuego ---- */
+  #apocCineHeroe{
+    position:absolute; left:6%; bottom:9%; z-index:2;
+    height:42%; width:auto; opacity:0;
+    transition:opacity .35s ease;
+    pointer-events:none;
+    /* Mirando hacia el dragón, que en esas dos imágenes está a la derecha */
+    transform:scaleX(-1);
+  }
+  #apocCineHeroe.on{ opacity:1; }
+
+  /* Sin protección: el fuego lo alcanza y lo va calcinando. */
+  #apocCineHeroe.quemandose{
+    animation:apocQuemar 1.6s ease-in forwards, apocTemblar .09s linear infinite;
+  }
+  @keyframes apocQuemar{
+    0%   { filter:none; }
+    30%  { filter:brightness(1.7) sepia(1) saturate(6) hue-rotate(-18deg); }
+    70%  { filter:brightness(.8) sepia(1) saturate(7) hue-rotate(-25deg) contrast(1.5); }
+    100% { filter:brightness(.18) sepia(1) saturate(3) contrast(2); opacity:.55; }
+  }
+  @keyframes apocTemblar{
+    0%,100%{ margin-left:0; }
+    25%{ margin-left:-3px; }
+    75%{ margin-left:3px; }
+  }
+
+  /* Con la armadura o el manto de Jesús: el fuego rebota en un escudo. */
+  #apocCineHeroe.protegido{ animation:apocResistir 1.2s ease-out; }
+  @keyframes apocResistir{
+    0%,100%{ filter:none; }
+    50%{ filter:drop-shadow(0 0 22px #ffe680) brightness(1.3); }
+  }
+  #apocEscudo{
+    position:absolute; left:6%; bottom:9%; z-index:3;
+    height:46%; aspect-ratio:1/2; opacity:0; pointer-events:none;
+    border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,230,128,.45) 0%, rgba(255,200,60,.18) 55%, transparent 72%);
+    border:2px solid rgba(255,230,128,.75);
+    box-shadow:0 0 40px rgba(255,220,120,.7), inset 0 0 30px rgba(255,235,160,.5);
+  }
+  #apocEscudo.on{ animation:apocEscudoPulso 1.6s ease-out; }
+  @keyframes apocEscudoPulso{
+    0%{ opacity:0; transform:scale(.7); }
+    25%{ opacity:1; transform:scale(1.06); }
+    70%{ opacity:.85; transform:scale(1); }
+    100%{ opacity:0; transform:scale(1.1); }
+  }
+
   /* ---- Mensaje de derrota a pantalla completa ---- */
   #apocDerrota{
     position:fixed; inset:0; z-index:9850; display:none;
@@ -4679,6 +4732,8 @@ function mostrarPromo(titulo){
   <img id="apocCineImg" alt="">
   <div id="apocCineFlash"></div>
   <div id="apocCineTxt"></div>
+  <img id="apocCineHeroe" alt="">
+  <div id="apocEscudo"></div>
   <button id="apocCineSkip">Saltar ›</button>
 </div>
 
@@ -4695,8 +4750,14 @@ function mostrarPromo(titulo){
 /* ===== Fotogramas de la secuencia, en orden ===== */
 const APOC_FRAMES = [
   'apoc_1.webp','apoc_2.webp','apoc_3.webp',
-  'apoc_4.webp','apoc_5.webp','apoc_6.webp','apoc_7.webp'
+  'apoc_4.webp','apoc_5.webp','apoc_7.webp','apoc_6.webp'
 ];
+/* Entre la 7 y la 6 no hay fogonazo: son casi la misma escena y el corte
+   limpio hace que el fuego parezca salir hacia el jugador. El índice es el
+   del fotograma que NO debe llevar destello al entrar. */
+const APOC_SIN_DESTELLO = [6];
+/* En estos dos últimos fotogramas aparece el personaje recibiendo el fuego. */
+const APOC_CON_PERSONAJE = [5, 6];
 /* Texto que aparece sobre la secuencia (uno por fotograma; vacío = sin texto) */
 const APOC_TEXTOS = [
   'Y apareció una gran señal en el cielo…',
@@ -4705,13 +4766,13 @@ const APOC_TEXTOS = [
   '',
   'Y su aliento consumió la tierra.',
   '',
-  'Ha llegado la última batalla.'
+  ''   // el último fotograma va sin texto: manda la imagen del fuego
 ];
 const APOC_ID = 'armadura-Dios';   // traje requerido
 /* Duración de cada fotograma, en milisegundos. La primera imagen del
    dragón se queda fija 3,5 segundos para que se aprecie; las demás pasan
    más lento que antes para que se lea el relato. */
-const APOC_DURACION = [3500, 1400, 1400, 1400, 1400, 1400, 2200];
+const APOC_DURACION = [3500, 1400, 1400, 1400, 1400, 1800, 2600];
 const APOC_MS = 1400;              // duración por defecto
 
 /* Precarga: sin esto los primeros fotogramas saldrían en negro. */
@@ -4775,6 +4836,11 @@ function reproducirApocCine(alTerminar){
 
   function terminar(){
     clearTimeout(apocCineTimer);
+    const h2 = document.getElementById('apocCineHeroe');
+    const e2 = document.getElementById('apocEscudo');
+    h2.classList.remove('on', 'quemandose', 'protegido');
+    e2.classList.remove('on');
+    h2.removeAttribute('src');
     cine.classList.remove('show');
     img.classList.remove('on');
     txt.classList.remove('on');
@@ -4785,12 +4851,48 @@ function reproducirApocCine(alTerminar){
   document.getElementById('apocCineSkip').onclick = terminar;
   cine.classList.add('show');
 
+  const heroe = document.getElementById('apocCineHeroe');
+  const escudo = document.getElementById('apocEscudo');
+
+  /* Lleva puesto algo capaz de resistir el fuego del Dragón. */
+  function apocProtegido(){
+    return state.equippedOutfit === 'armadura-Dios' || state.equippedOutfit === 'jesus';
+  }
+
   function siguiente(){
     if(i >= APOC_FRAMES.length){ terminar(); return; }
-    // Fogonazo blanco en el corte: hace que el salto entre imágenes
-    // se lea como un montaje y no como una carga lenta.
-    flash.style.opacity = '0.75';
-    setTimeout(()=>{ flash.style.opacity = '0'; }, 120);
+    // Fogonazo blanco en el corte, salvo en los fotogramas marcados: ahí el
+    // corte limpio hace que el fuego parezca continuar hacia el jugador.
+    if(APOC_SIN_DESTELLO.indexOf(i) === -1){
+      flash.style.opacity = '0.75';
+      setTimeout(()=>{ flash.style.opacity = '0'; }, 120);
+    }
+
+    // ---- El personaje aparece en los dos últimos fotogramas ----
+    if(APOC_CON_PERSONAJE.indexOf(i) !== -1){
+      if(!heroe.src){
+        const g = state.avatar === '👧' ? 'girl' : 'boy';
+        heroe.src = fullbodyFileName(g, state.equippedOutfit || 'hojas', false) + '?' + BUILD_VERSION;
+      }
+      heroe.classList.add('on');
+      // El efecto se dispara en el fotograma del fuego de frente (el último).
+      if(i === APOC_CON_PERSONAJE[APOC_CON_PERSONAJE.length - 1]){
+        if(apocProtegido()){
+          heroe.classList.remove('quemandose');
+          heroe.classList.add('protegido');
+          escudo.classList.remove('on'); void escudo.offsetWidth; escudo.classList.add('on');
+          try{ playTone(220, 0.5, 'triangle', 0.12); }catch(e){}
+        }else{
+          heroe.classList.remove('protegido');
+          heroe.classList.add('quemandose');
+          try{ playNoiseBurst(0.6, 900, 'highpass', 0.25); }catch(e){}
+          vibrate([120, 60, 220]);
+        }
+      }
+    }else{
+      heroe.classList.remove('on', 'quemandose', 'protegido');
+      escudo.classList.remove('on');
+    }
 
     const ruta = IMG_DIR + APOC_FRAMES[i] + '?' + BUILD_VERSION;
     img.classList.remove('on');
