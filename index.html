@@ -359,8 +359,6 @@
   /* ---- Accesorios de la tienda ---- */
   .acc{position:absolute; z-index:7; pointer-events:none;}
   .acc-halo{top:-10px; left:20px; width:70px; height:14px; border-radius:50%; border:3px solid #ffe066; box-shadow:0 0 10px 2px rgba(255,224,102,.45); border-bottom-color:rgba(255,224,102,.3);}
-  .acc-gorro{top:-16px; left:20px; width:70px; height:20px; background:#8a5a2a; border:2px solid #5a3a1a; border-radius:28px 28px 4px 4px;}
-  .acc-gorro::after{content:''; position:absolute; top:12px; left:-4px; right:-4px; height:6px; background:#a06a34; border:2px solid #5a3a1a; border-radius:5px;}
   .acc-sandalias{top:146px; left:0;}
   .acc-sandalias::before, .acc-sandalias::after{content:''; position:absolute; top:0; width:22px; height:10px; background:#b07840; border:2px solid #6a4520; border-radius:5px 5px 3px 3px;}
   .acc-sandalias::before{left:30px;}
@@ -3093,14 +3091,13 @@ const OUTFITS = [
 ];
 const ACCESSORIES = [
   { id:'halo', name:'Halo de luz', cost:40, cssClass:'acc-halo', swatch:'#ffe066' },
-  { id:'gorro', name:'Gorro de pastor', cost:80, cssClass:'acc-gorro', swatch:'#8a5a2a' },
-  { id:'sandalias', name:'Sandalias del peregrino', cost:120, cssClass:'acc-sandalias', swatch:'#b07840' },
+  { id:'sandalias', name:'Tapete sagrado', cost:120, cssClass:'acc-sandalias', swatch:'#b07840' },
   { id:'escudo', name:'Escudo de la fe', cost:200, cssClass:'acc-escudo', swatch:'#9aa8c0' },
 ];
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-tienda2';
+const BUILD_VERSION = '20260918-tienda4';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
