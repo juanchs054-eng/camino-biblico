@@ -3078,7 +3078,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-duelo12';
+const BUILD_VERSION = '20260918-duelo13';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -4959,6 +4959,9 @@ function reproducirApocCine(alTerminar){
 /* ===== Mensaje de derrota ===== */
 function mostrarApocDerrota(){
   const caja = document.getElementById('apocDerrota');
+  // Se repone el título: la derrota contra la Bestia lo deja cambiado y
+  // antes se quedaba pegado en la siguiente derrota contra el Dragón.
+  document.querySelector('#apocDerrota .ad-titulo').textContent = 'El Gran Dragón te ha vencido';
   const armadura = PREMIUM_OUTFITS.find(o => o.id === APOC_ID);
   const msg = document.getElementById('apocDerrotaMsg');
   const btn = document.getElementById('apocDerrotaBtn');
@@ -4986,6 +4989,7 @@ function mostrarApocDerrota(){
   vibrate([400]);
 }
 function cerrarApocDerrota(){
+  if(typeof window.reiniciarSecuenciaApoc === 'function') window.reiniciarSecuenciaApoc();
   document.getElementById('apocDerrota').classList.remove('show');
   stopApocMusica();
   showScreen('screen-map');
@@ -5017,6 +5021,9 @@ window.PIEZAS_FINAL.push('D'); sellarVersion();
   const cineOriginal = window.playIntroCinematic;
   window.playIntroCinematic = function(bookIdx, callback){
     if(!esApocalipsis(bookIdx)){ return cineOriginal.apply(this, arguments); }
+    // Cada entrada a Apocalipsis empieza de cero, pase lo que haya pasado
+    // en el intento anterior.
+    if(typeof window.reiniciarSecuenciaApoc === 'function') window.reiniciarSecuenciaApoc();
     precargarApoc();
     stopAmbient();
     startApocMusica();
@@ -5760,6 +5767,16 @@ window.PIEZAS_FINAL.push('U'); sellarVersion();
        paso 2 → se ganó el duelo          → Gran Final con confeti          */
   let apocPaso = 0;
   const finalPrevio = window.showGrandFinale;
+
+  /* Reinicio completo de la secuencia. Es la pieza que faltaba: si el
+     jugador perdía el duelo o se salía a medias, el contador y la bandera
+     se quedaban a mitad de camino, y en la siguiente partida el juego
+     creía que ya había visto el Dragón (no salía la secuencia) o que ya
+     había vencido a la Bestia (saltaba directo a los confeti). */
+  window.reiniciarSecuenciaApoc = function(){
+    apocPaso = 0;
+    apocFase2 = false;
+  };
 
   dueloFinalReal = function(){
     apocPaso = 0;
