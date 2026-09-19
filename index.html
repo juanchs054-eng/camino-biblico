@@ -3097,7 +3097,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-tienda5';
+const BUILD_VERSION = '20260918-bestia2';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -4431,7 +4431,7 @@ if('serviceWorker' in navigator){
 <script>
 /* El sellito muestra la versión y, detrás, una marca por cada pieza del
    final que se haya cargado: D = secuencia del Dragón, B = la Bestia,
-   U = duelo del botón. Si alguna falta, el celular está usando una copia
+   U = duelo del botón, S = sonidos del Dragón. Si alguna falta, el celular está usando una copia
    guardada antigua del juego: basta con recargar con datos activos. */
 window.PIEZAS_FINAL = [];
 function sellarVersion(){
@@ -4807,6 +4807,7 @@ function precargarApoc(){
   if(apocPrecargado) return;
   apocPrecargado = true;
   APOC_FRAMES.forEach(f => { const i = new Image(); i.src = IMG_DIR + f + '?' + BUILD_VERSION; });
+  precargarSonidosDragon();
 }
 
 /* ===== Música propia de Apocalipsis =====
@@ -4846,6 +4847,106 @@ function stopApocMusica(){
   }
 }
 
+/* ===== Sonidos reales del Dragón =====
+   A diferencia del resto del juego (sonidos sintetizados), estos son archivos
+   de audio de la carpeta sonidos/:
+     · dragon_rugido.mp3 -> suena cuando aparece el Dragón (primer fotograma).
+     · dragon_fuego.m4a  -> suena cuando su aliento de fuego llega al héroe.
+     · bestia_relampagos.m4a -> la tormenta de la Bestia: empieza cuando la
+       Imagen cobra vida y sigue, en bucle y con destellos, durante su batalla
+       (ver "Tormenta de la Bestia", más abajo).
+   Se descargan con fetch y se reproducen con Web Audio, en el mismo
+   AudioContext del resto del juego, para controlar volumen y corte suave.
+   Si un archivo no carga, el juego sigue igual, solo que sin ese sonido. */
+const SONIDOS_DRAGON = {
+  rugido: 'sonidos/dragon_rugido.mp3',
+  fuego:  'sonidos/dragon_fuego.m4a',
+  relampagos: 'sonidos/bestia_relampagos.m4a'
+};
+const DRAGON_VOL_RUGIDO = 0.8;   // volumen de 0 a 1
+const DRAGON_VOL_FUEGO  = 0.8;   // volumen de 0 a 1
+const BESTIA_VOL_RELAMPAGOS = 0.6;   // volumen de 0 a 1 (el archivo ya viene fuerte)
+const BESTIA_VOL_RELAMPAGOS_BATALLA = 0.4;   // más bajo en la batalla, para no tapar los demás sonidos
+
+const dragonRaw = {};       // nombre -> promesa del archivo descargado
+const dragonBuf = {};       // nombre -> promesa del audio ya decodificado
+let dragonFuentes = [];     // sonidos que están sonando ahora mismo
+let dragonSesion = 0;       // sube cada vez que se corta: cancela lo pendiente
+
+/* Solo descarga. No toca el AudioContext, que debe nacer con un toque del
+   jugador (igual que el resto de sonidos del juego). */
+function precargarSonidosDragon(){
+  Object.keys(SONIDOS_DRAGON).forEach(nombre => {
+    if(dragonRaw[nombre]) return;
+    dragonRaw[nombre] = fetch(SONIDOS_DRAGON[nombre] + '?' + BUILD_VERSION)
+      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+      .catch(() => { delete dragonRaw[nombre]; return null; });   // sin red: se reintenta la próxima vez
+  });
+}
+
+function decodificarSonidoDragon(nombre){
+  if(dragonBuf[nombre]) return dragonBuf[nombre];
+  precargarSonidosDragon();
+  dragonBuf[nombre] = dragonRaw[nombre].then(datos => {
+    if(!datos) throw new Error('sin datos');
+    // decodeAudioData se "come" el buffer que recibe: se le pasa una copia.
+    return new Promise((ok, mal) => {
+      const p = getCtx().decodeAudioData(datos.slice(0), ok, mal);
+      if(p && p.catch) p.catch(()=>{});
+    });
+  }).catch(() => { delete dragonBuf[nombre]; return null; });
+  return dragonBuf[nombre];
+}
+
+/* Reproduce un sonido del Dragón. Si el archivo tarda más de maxTardanza (ms)
+   en estar listo, no suena: un rugido que llega tarde queda fuera de escena. */
+function sonarDragon(nombre, vol, maxTardanza){
+  const sesion = dragonSesion;
+  const pedido = Date.now();
+  decodificarSonidoDragon(nombre).then(buf => {
+    if(!buf || sesion !== dragonSesion) return;
+    if(Date.now() - pedido > (maxTardanza || 2000)) return;
+    try{
+      const ctx = getCtx();
+      if(ctx.state === 'suspended'){ const r = ctx.resume(); if(r && r.catch) r.catch(()=>{}); }
+      const fuente = ctx.createBufferSource();
+      const ganancia = ctx.createGain();
+      fuente.buffer = buf;
+      ganancia.gain.value = vol;
+      fuente.connect(ganancia); ganancia.connect(ctx.destination);
+      const registro = { fuente, ganancia };
+      fuente.onended = () => { dragonFuentes = dragonFuentes.filter(f => f !== registro); };
+      fuente.start();
+      dragonFuentes.push(registro);
+    }catch(e){}
+  });
+}
+
+/* Corta con un desvanecimiento breve y cancela lo que aún no haya sonado. */
+function cortarSonidosDragon(ms){
+  dragonSesion++;
+  if(!actx) return;
+  const ahora = actx.currentTime;
+  const fin = ahora + (ms || 400) / 1000;
+  dragonFuentes.forEach(({ fuente, ganancia }) => {
+    try{
+      ganancia.gain.cancelScheduledValues(ahora);
+      ganancia.gain.setValueAtTime(ganancia.gain.value, ahora);
+      ganancia.gain.linearRampToValueAtTime(0.0001, fin);
+      fuente.stop(fin + 0.05);
+    }catch(e){}
+  });
+  dragonFuentes = [];
+}
+
+/* Al empezar la secuencia: descarta lo que haya quedado de un intento
+   anterior y deja los dos audios decodificados de antemano. */
+function prepararSonidosDragon(){
+  dragonSesion++;
+  decodificarSonidoDragon('rugido');
+  decodificarSonidoDragon('fuego');
+}
+
 /* ===== ¿Es el jefe final? ===== */
 function esApocalipsis(bookIdx){ return bookIdx === BOOKS.length - 1; }
 
@@ -4869,6 +4970,7 @@ function reproducirApocCine(alTerminar){
 
   function terminar(){
     clearTimeout(apocCineTimer);
+    cortarSonidosDragon(500);
     const h2 = document.getElementById('apocCineHeroe');
     const e2 = document.getElementById('apocEscudo');
     h2.classList.remove('on', 'quemandose', 'protegido');
@@ -4882,6 +4984,7 @@ function reproducirApocCine(alTerminar){
   }
 
   document.getElementById('apocCineSkip').onclick = terminar;
+  prepararSonidosDragon();
   cine.classList.add('show');
 
   const heroe = document.getElementById('apocCineHeroe');
@@ -4915,6 +5018,10 @@ function reproducirApocCine(alTerminar){
 
   function siguiente(){
     if(i >= APOC_FRAMES.length){ terminar(); return; }
+    // Sonidos reales del Dragón (ver "Sonidos reales del Dragón", arriba):
+    // el rugido al aparecer y el aliento de fuego cuando llega al héroe.
+    if(i === 0) sonarDragon('rugido', DRAGON_VOL_RUGIDO, 3000);
+    if(i === APOC_CON_PERSONAJE[0]) sonarDragon('fuego', DRAGON_VOL_FUEGO, 1200);
     // Fogonazo blanco en el corte, salvo en los fotogramas marcados: ahí el
     // corte limpio hace que el fuego parezca continuar hacia el jugador.
     if(APOC_SIN_DESTELLO.indexOf(i) === -1){
@@ -5018,6 +5125,7 @@ function cerrarApocDerrota(){
 
 /* ===== Enganches ===== */
 window.PIEZAS_FINAL.push('D'); sellarVersion();
+window.PIEZAS_FINAL.push('S'); sellarVersion();
 (function engancharApocalipsis(){
   const startBattleOriginal = window.startBattle;
   window.startBattle = function(bookIdx){
@@ -5053,6 +5161,7 @@ window.PIEZAS_FINAL.push('D'); sellarVersion();
   const showScreenOriginalApoc = window.showScreen;
   window.showScreen = function(id){
     if(id !== 'screen-battle' && apocMusica) stopApocMusica();
+    if(id !== 'screen-battle'){ try{ detenerTormentaBestia(700); }catch(e){} }   // la tormenta de la Bestia acaba al salir de la batalla
     return showScreenOriginalApoc.apply(this, arguments);
   };
 
@@ -5289,8 +5398,15 @@ function devVerPromo(){
     border-radius:14px; font-size:1rem; font-weight:800; cursor:pointer;
     box-shadow:0 6px 22px rgba(0,0,0,.55);
   }
+  /* Destello de los relámpagos: cubre toda la pantalla, por encima de la
+     batalla y del duelo, y no intercepta ningún toque. */
+  #relampagoFlash{
+    position:fixed; inset:0; z-index:9990; pointer-events:none; opacity:0;
+    background:radial-gradient(circle at 50% 28%, #ffffff 0%, #e6f0ff 45%, #bcd6ff 100%);
+  }
 </style>
 
+<div id="relampagoFlash"></div>
 <div id="bestiaIntro">
   <div id="bestiaMarco">
     <img id="bestiaDormida" alt="">
@@ -5344,6 +5460,9 @@ function mostrarIntroBestia(){
   txt.textContent = 'Le levantaron una imagen a la Bestia… fría, muda, sin vida.';
   caja.classList.add('show');
   try{ playTone(44, 1.4, 'sine', 0.10); }catch(e){}
+  // Los relámpagos son un archivo largo: se decodifica ya, para que esté listo
+  // cuando se le infunda el aliento.
+  try{ decodificarSonidoDragon('relampagos'); }catch(e){}
 
   // 1) Se le infunde el aliento.
   setTimeout(()=>{
@@ -5351,6 +5470,9 @@ function mostrarIntroBestia(){
     aliento.classList.remove('on'); void aliento.offsetWidth; aliento.classList.add('on');
     try{ playNoiseBurst(0.7, 300, 'lowpass', 0.28); }catch(e){}
     vibrate([500]);
+    // Empieza la tormenta: el primer relámpago cae mientras el destello azul
+    // del aliento llega a su punto más fuerte.
+    try{ iniciarTormentaBestia(BESTIA_VOL_RELAMPAGOS); }catch(e){}
   }, 2200);
 
   // 2) La estatua despierta.
@@ -5373,6 +5495,7 @@ function mostrarIntroBestia(){
 
 function empezarBatallaBestia(){
   document.getElementById('bestiaIntro').classList.remove('show');
+  try{ ajustarTormentaBestia(BESTIA_VOL_RELAMPAGOS_BATALLA, 1500); }catch(e){}   // la tormenta sigue en la batalla, más baja
   apocFase2 = true;
   startBattle(BOOKS.length - 1);
   // La batalla ya pintó al Dragón: lo cambiamos por la Bestia.
@@ -5387,6 +5510,126 @@ function pintarBestiaEnBatalla(){
   if(fig){
     fig.innerHTML = '<div class="boss-photo"><img id="bestiaBatallaImg" src="' + bestiaRuta(BESTIA_IA) + '" alt="' + BESTIA_NOMBRE + '"></div>';
   }
+}
+
+/* ===== Tormenta de la Bestia =====
+   El audio de relámpagos (bestia_relampagos.m4a) suena en bucle desde que la
+   Imagen cobra vida hasta que termina su fase (batalla de preguntas y duelo),
+   y con cada trueno fuerte se enciende un destello blanco en la pantalla.
+
+   Cada vuelta del audio es una fuente independiente programada en el reloj de
+   audio, una detrás de otra sin hueco, y cierra con un desvanecimiento corto
+   porque el archivo termina en seco. Los destellos se programan con la misma
+   vuelta, a partir de sus tiempos dentro del archivo.
+
+   Los destellos son ráfagas cortas y separadas: nunca hay más de tres en un
+   mismo segundo. */
+const RELAMPAGOS_BESTIA = [
+  // t = segundo del archivo en que cae el trueno; fuerza = brillo (0 a 1)
+  { t: 0.81,  fuerza: 0.85, doble: true },    // el primer golpe seco
+  { t: 5.36,  fuerza: 0.45 },
+  { t: 6.00,  fuerza: 0.40 },
+  { t: 10.97, fuerza: 0.60 },
+  { t: 11.37, fuerza: 0.35 },
+  { t: 13.24, fuerza: 0.30 },
+  { t: 15.55, fuerza: 0.90, doble: true }     // el golpe final
+];
+const TORMENTA_FADE_FINAL = 0.4;   // segundos de desvanecimiento al cerrar cada vuelta
+
+let tormentaBestia = null;         // null = apagada
+
+/* Un destello blanco-azulado sobre toda la pantalla. Con "doble" parpadea
+   dos veces seguidas, como un relámpago de verdad. */
+function destelloRelampago(fuerza, doble){
+  const el = document.getElementById('relampagoFlash');
+  if(!el || !el.animate) return;
+  const p = Math.max(0.12, Math.min(0.9, fuerza));
+  const pasos = doble
+    ? [ {opacity:0}, {opacity:p, offset:.06}, {opacity:p*.12, offset:.22}, {opacity:p*.85, offset:.32}, {opacity:0} ]
+    : [ {opacity:0}, {opacity:p, offset:.08}, {opacity:0} ];
+  try{ el.animate(pasos, { duration: doble ? 700 : 420 }); }catch(e){}
+}
+
+function programarVueltaTormenta(tm, inicio){
+  if(!tm.activa) return;
+  const ctx = getCtx();
+  const dur = tm.buf.duration;
+
+  const fuente = ctx.createBufferSource();
+  const g = ctx.createGain();
+  fuente.buffer = tm.buf;
+  g.gain.setValueAtTime(1, inicio + dur - TORMENTA_FADE_FINAL);
+  g.gain.linearRampToValueAtTime(0.0001, inicio + dur);
+  fuente.connect(g); g.connect(tm.master);
+  fuente.start(inicio);
+  tm.fuentes.push(fuente);
+  fuente.onended = () => { tm.fuentes = tm.fuentes.filter(f => f !== fuente); };
+
+  RELAMPAGOS_BESTIA.forEach(r => {
+    const ms = (inicio + r.t - ctx.currentTime) * 1000;
+    tm.timers.push(setTimeout(() => {
+      // Con el volumen más bajo de la batalla, los destellos también son más suaves.
+      const escala = Math.min(1, tm.vol / BESTIA_VOL_RELAMPAGOS);
+      destelloRelampago(r.fuerza * escala, r.doble);
+    }, Math.max(0, ms)));
+  });
+
+  // La vuelta siguiente se programa cuando faltan ~1,5 s: sin hueco entre una y otra.
+  tm.proxInicio = inicio + dur;
+  const espera = (tm.proxInicio - ctx.currentTime - 1.5) * 1000;
+  tm.timers.push(setTimeout(() => programarVueltaTormenta(tm, tm.proxInicio), Math.max(0, espera)));
+}
+
+/* Enciende la tormenta. Si ya está sonando, solo ajusta el volumen. */
+function iniciarTormentaBestia(vol){
+  if(tormentaBestia){ ajustarTormentaBestia(vol, 800); return; }
+  const tm = { activa: true, vol, master: null, buf: null, fuentes: [], timers: [], proxInicio: 0 };
+  tormentaBestia = tm;
+  decodificarSonidoDragon('relampagos').then(buf => {
+    if(!tm.activa) return;                                  // se apagó mientras cargaba
+    if(!buf){ if(tormentaBestia === tm) tormentaBestia = null; return; }   // no cargó: sin tormenta, el juego sigue
+    try{
+      const ctx = getCtx();
+      if(ctx.state === 'suspended'){ const r = ctx.resume(); if(r && r.catch) r.catch(()=>{}); }
+      tm.buf = buf;
+      tm.master = ctx.createGain();
+      tm.master.gain.value = tm.vol;
+      tm.master.connect(ctx.destination);
+      programarVueltaTormenta(tm, ctx.currentTime + 0.05);
+    }catch(e){ detenerTormentaBestia(0); }
+  });
+}
+
+/* Sube o baja el volumen poco a poco. */
+function ajustarTormentaBestia(vol, ms){
+  const tm = tormentaBestia;
+  if(!tm) return;
+  tm.vol = vol;
+  if(!tm.master || !actx) return;
+  try{
+    const ahora = actx.currentTime;
+    tm.master.gain.cancelScheduledValues(ahora);
+    tm.master.gain.setValueAtTime(tm.master.gain.value, ahora);
+    tm.master.gain.linearRampToValueAtTime(vol, ahora + (ms || 800) / 1000);
+  }catch(e){}
+}
+
+/* Apaga la tormenta con un desvanecimiento y cancela los destellos pendientes. */
+function detenerTormentaBestia(ms){
+  const tm = tormentaBestia;
+  if(!tm) return;
+  tormentaBestia = null;
+  tm.activa = false;
+  tm.timers.forEach(clearTimeout);
+  if(!tm.master || !actx) return;
+  try{
+    const ahora = actx.currentTime;
+    const fin = ahora + (ms || 600) / 1000;
+    tm.master.gain.cancelScheduledValues(ahora);
+    tm.master.gain.setValueAtTime(tm.master.gain.value, ahora);
+    tm.master.gain.linearRampToValueAtTime(0.0001, fin);
+    tm.fuentes.forEach(f => { try{ f.stop(fin + 0.05); }catch(e){} });
+  }catch(e){}
 }
 
 window.PIEZAS_FINAL.push('B'); sellarVersion();
@@ -5591,6 +5834,7 @@ const DUELO_INICIAL  = 0.48;   // 0 = encima del jugador, 1 = fuera de pantalla
 let dueloEstado = null;
 
 function abrirDueloBestia(){
+  try{ iniciarTormentaBestia(BESTIA_VOL_RELAMPAGOS_BATALLA); }catch(e){}   // sigue sonando; si venía de perder, vuelve a empezar
   const caja = document.getElementById('dueloBestia');
   const img = document.getElementById('dueloImg');
   const heroe = document.getElementById('dueloHeroe');
@@ -5684,6 +5928,7 @@ function dueloCerrarTodo(){
 
 function dueloGanar(){
   dueloCerrarTodo();
+  try{ detenerTormentaBestia(500); }catch(e){}
   const img = document.getElementById('dueloImg');
   img.classList.remove('huyendo');
   img.style.transition = 'transform .5s ease-in, opacity .5s ease-in';
@@ -5699,6 +5944,7 @@ function dueloGanar(){
 
 function dueloPerder(){
   dueloCerrarTodo();
+  try{ detenerTormentaBestia(600); }catch(e){}
   const caja = document.getElementById('dueloBestia');
   // Todo a negro y aparece la marca.
   caja.style.transition = 'filter .6s ease-in';
