@@ -79,6 +79,10 @@
   }
   .btn:active{transform:translateY(3px); box-shadow:0 3px 0 var(--gold-dark);}
   .btn:disabled{opacity:0.4; box-shadow:none;}
+  /* Botón del Gran Final: tenue e intocable mientras suena la canción; al liberarse
+     recupera su brillo poco a poco. */
+  #finaleBtn{ transition: opacity 1.2s ease, box-shadow 1.2s ease; }
+  #finaleBtn:disabled{ opacity:0.3; pointer-events:none; }
 
   /* ============ MAPA ============ */
   #screen-map{
@@ -850,7 +854,7 @@
     <h2 class="finale-title">¡Felicidades!</h2>
     <p class="finale-message">¡Felicidades! Has logrado vencer todos los desafíos. Has demostrado tener un amplio conocimiento de todos los libros de la Biblia. Te animo a seguir adelante y a no desmayar en la búsqueda de la sabiduría, el camino, la verdad y la vida que es Jesucristo.</p>
     <p class="finale-signature">Te saluda<br><strong>&ldquo;MAPI LOS PENTECOSTALES DE ANTIOQUIA&rdquo;</strong></p>
-    <button class="btn" onclick="closeFinale()">Volver al camino</button>
+    <button class="btn" id="finaleBtn" onclick="closeFinale()">Volver al camino</button>
   </div>
 </div>
 
@@ -3097,7 +3101,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-bestia2';
+const BUILD_VERSION = '20260918-final2';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -4947,6 +4951,114 @@ function prepararSonidosDragon(){
   decodificarSonidoDragon('fuego');
 }
 
+/* ===== Canción del Gran Final =====
+   Suena cuando aparece el confeti (la pantalla del Gran Final) y se apaga al
+   salir de ella. Es una canción larga (unos 3 min 20 s), así que no se
+   decodifica entera como los efectos: se descarga una vez a memoria y se
+   reproduce con un elemento de audio, que la va leyendo poco a poco.
+   Entra con un desvanecimiento de 3 s para no chocar con la fanfarria del
+   final, y respeta el ajuste de "Música ambiental": si el jugador la apagó,
+   solo hay fanfarria y confeti.
+
+   Mientras tanto, el botón "Volver al camino" queda tenue e intocable durante
+   los primeros 30 s, para que se escuche la música. Si la canción no puede
+   sonar (o está apagada), el botón no espera. */
+const CANCION_FINAL = 'sonidos/final_nada_soy_sin_el.mp3';
+const CANCION_FINAL_VOL = 0.8;          // volumen de 0 a 1
+const CANCION_FINAL_ENTRADA_MS = 3000;  // desvanecimiento de entrada
+const BOTON_FINAL_ESPERA_MS = 30000;    // el botón "Volver al camino" espera esto
+let botonFinalTimer = null;
+
+let cancionFinalCarga = null;   // promesa -> dirección del archivo ya en memoria (o null)
+let cancionFinal = null;        // { audio, fade } mientras suena; null = apagada
+let cancionFinalSesion = 0;     // sube al apagar: cancela lo que aún esté cargando
+
+/* Solo descarga (unos 5 MB). Se pide al aparecer la Bestia para que esté lista
+   cuando llegue el final. Si falla, se reintenta la próxima vez. */
+function precargarCancionFinal(){
+  if(cancionFinalCarga) return cancionFinalCarga;
+  cancionFinalCarga = fetch(CANCION_FINAL + '?' + BUILD_VERSION)
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+    .then(b => URL.createObjectURL(b.type ? b : new Blob([b], { type: 'audio/mpeg' })))
+    .catch(() => { cancionFinalCarga = null; return null; });
+  return cancionFinalCarga;
+}
+
+/* Lleva el volumen de la canción hasta "hasta" en "ms" milisegundos. */
+function fundirCancionFinal(cf, hasta, ms, alTerminar){
+  const audio = cf.audio;
+  if(!audio) return;
+  clearInterval(cf.fade);
+  const desde = audio.volume;
+  const pasos = Math.max(1, Math.round(ms / 50));
+  let n = 0;
+  cf.fade = setInterval(() => {
+    n++;
+    audio.volume = Math.max(0, Math.min(1, desde + (hasta - desde) * (n / pasos)));
+    if(n >= pasos){
+      clearInterval(cf.fade); cf.fade = null;
+      if(alTerminar) alTerminar();
+    }
+  }, 50);
+}
+
+/* El botón de salir al mapa queda tenue e intocable durante "ms". */
+function bloquearBotonFinal(ms){
+  const b = document.getElementById('finaleBtn');
+  if(!b) return;
+  b.disabled = true;
+  clearTimeout(botonFinalTimer);
+  botonFinalTimer = setTimeout(liberarBotonFinal, ms);
+}
+function liberarBotonFinal(){
+  clearTimeout(botonFinalTimer);
+  botonFinalTimer = null;
+  const b = document.getElementById('finaleBtn');
+  if(b) b.disabled = false;
+}
+
+function iniciarCancionFinal(){
+  if(!state.ambientOn) return;      // el jugador apagó la música
+  if(cancionFinal) return;          // ya está sonando
+  const sesion = ++cancionFinalSesion;
+  const cf = { audio: null, fade: null };
+  cancionFinal = cf;
+  bloquearBotonFinal(BOTON_FINAL_ESPERA_MS);
+  precargarCancionFinal().then(url => {
+    if(sesion !== cancionFinalSesion) return;                       // ya salió de la pantalla
+    if(!url){ if(cancionFinal === cf) cancionFinal = null; liberarBotonFinal(); return; } // no cargó: sin canción, el botón no espera
+    try{
+      const audio = new Audio(url);
+      audio.volume = 0;
+      cf.audio = audio;
+      const p = audio.play();
+      if(p && p.catch) p.catch(() => { if(cancionFinal === cf) cancionFinal = null; liberarBotonFinal(); });   // el navegador no la dejó sonar
+      fundirCancionFinal(cf, CANCION_FINAL_VOL, CANCION_FINAL_ENTRADA_MS);
+    }catch(e){ if(cancionFinal === cf) cancionFinal = null; liberarBotonFinal(); }
+  });
+}
+
+function detenerCancionFinal(ms){
+  liberarBotonFinal();              // al salir de la pantalla el botón queda listo para la próxima vez
+  const cf = cancionFinal;
+  if(!cf) return;
+  cancionFinal = null;
+  cancionFinalSesion++;
+  const audio = cf.audio;
+  if(!audio) return;
+  fundirCancionFinal(cf, 0, ms || 600, () => {
+    try{ audio.pause(); audio.removeAttribute('src'); audio.load(); }catch(e){}
+  });
+}
+
+// Si el jugador cambia de aplicación o bloquea el celular, la canción espera.
+document.addEventListener('visibilitychange', () => {
+  const cf = cancionFinal;
+  if(!cf || !cf.audio) return;
+  if(document.hidden){ cf.audio.pause(); }
+  else { const p = cf.audio.play(); if(p && p.catch) p.catch(()=>{}); }
+});
+
 /* ===== ¿Es el jefe final? ===== */
 function esApocalipsis(bookIdx){ return bookIdx === BOOKS.length - 1; }
 
@@ -5162,6 +5274,8 @@ window.PIEZAS_FINAL.push('S'); sellarVersion();
   window.showScreen = function(id){
     if(id !== 'screen-battle' && apocMusica) stopApocMusica();
     if(id !== 'screen-battle'){ try{ detenerTormentaBestia(700); }catch(e){} }   // la tormenta de la Bestia acaba al salir de la batalla
+    // La canción del Gran Final suena mientras se ve el confeti y se apaga al salir de esa pantalla.
+    try{ if(id === 'screen-finale') iniciarCancionFinal(); else detenerCancionFinal(600); }catch(e){}
     return showScreenOriginalApoc.apply(this, arguments);
   };
 
@@ -5463,6 +5577,8 @@ function mostrarIntroBestia(){
   // Los relámpagos son un archivo largo: se decodifica ya, para que esté listo
   // cuando se le infunda el aliento.
   try{ decodificarSonidoDragon('relampagos'); }catch(e){}
+  // Y se va descargando la canción del Gran Final, para que esté lista al llegar.
+  try{ if(state.ambientOn) precargarCancionFinal(); }catch(e){}
 
   // 1) Se le infunde el aliento.
   setTimeout(()=>{
