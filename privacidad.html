@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de privacidad · Camino Bíblico</title>
+<style>
+  :root{ --gold:#e8b64a; --parchment:#f3ead2; --bg:#10132a; --card:#181c38; }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:linear-gradient(180deg,#1c2140 0%, var(--bg) 100%);
+    color:var(--parchment); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.6; min-height:100vh;
+  }
+  main{ max-width:720px; margin:0 auto; padding:28px 18px 60px; }
+  h1{ color:var(--gold); font-size:1.6rem; margin:0 0 4px; }
+  .fecha{ color:#b9b6c9; font-size:0.85rem; margin:0 0 22px; }
+  h2{ color:var(--gold); font-size:1.1rem; margin:26px 0 6px; }
+  p, li{ font-size:0.97rem; }
+  ul{ padding-left:20px; margin:6px 0; }
+  li{ margin:4px 0; }
+  .caja{ background:var(--card); border:1px solid #5c4a1c; border-radius:14px; padding:14px 16px; margin:14px 0; }
+  a{ color:var(--gold); }
+  footer{ margin-top:34px; font-size:0.85rem; color:#b9b6c9; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Política de privacidad</h1>
+  <p class="fecha">Camino Bíblico · Última actualización: 19 de septiembre de 2026</p>
+
+  <p>Camino Bíblico es un juego de preguntas para recorrer la Biblia libro por libro. Esta página explica, en palabras sencillas, qué información usa el juego y qué hacemos con ella.</p>
+
+  <div class="caja">
+    <strong>En resumen:</strong> el juego no te pide cuenta, correo ni teléfono. Tu progreso se guarda solo en tu celular. No mostramos  ni usamos herramientas de rastreo. Si compras un traje, el pago lo procesa Wompi y nosotros nunca vemos los datos de tu tarjeta.
+  </div>
+
+  <h2>1. Qué se guarda en tu celular</h2>
+  <p>Para que puedas continuar donde te quedaste, el juego guarda en el almacenamiento de tu dispositivo:</p>
+  <ul>
+    <li>El nombre o apodo que escribes al empezar y el personaje que eliges.</li>
+    <li>Tu progreso: libros desbloqueados, monedas, trajes y accesorios, tu racha del desafío del día y tus ajustes (música y vibración).</li>
+  </ul>
+  <p>Esta información se queda en tu dispositivo y no se envía a ningún servidor nuestro. Te recomendamos usar solo un apodo, no tu nombre completo. Si borras los datos de la aplicación o la desinstalas, ese progreso se pierde.</p>
+
+  <h2>2. Compras dentro del juego</h2>
+  <p>Algunos trajes se compran con dinero real. Cuando eliges uno, el juego te lleva a la página de pago de <strong>Wompi</strong>, una pasarela de pagos, donde escribes tus datos de pago. Nosotros no recibimos ni guardamos números de tarjeta ni datos bancarios; Wompi los trata según su propia política de privacidad.</p>
+  <p>Para desbloquear el traje, el servidor del juego prepara el pago y después consulta a Wompi si la transacción fue aprobada, usando el identificador o la referencia de esa transacción. En tu celular se guarda ese identificador para poder confirmar la compra. No guardamos datos de pago en nuestros servidores.</p>
+  <p>Si el jugador es menor de edad, recomendamos que las compras las haga un adulto.</p>
+
+  <h2>3. Comentarios que nos envías</h2>
+  <p>Desde <em>Ajustes → Enviar comentario</em> puedes escribirnos. Tú eliges por dónde enviarlo (correo, WhatsApp u otra aplicación). El mensaje incluye lo que escribes, la versión del juego, el libro en el que vas y datos básicos de tu celular (modelo y versión de Android) para ayudarnos a encontrar errores. Lo usamos únicamente para responderte y mejorar el juego.</p>
+
+  <h2>4. Anuncios y análisis</h2>
+  <p>El juego no incluye herramientas propias de publicidad, análisis o rastreo de usuarios.</p>
+
+  <h2>5. Datos técnicos del sitio</h2>
+  <p>El juego se ofrece desde un sitio alojado en Cloudflare. Como ocurre con cualquier sitio web, Cloudflare puede registrar datos técnicos de la conexión (por ejemplo, la dirección IP) para que el servicio funcione y esté protegido.</p>
+
+  <h2>6. Tus derechos</h2>
+  <p>Puedes dejar de usar el juego en cualquier momento y borrar todos tus datos guardados borrando los datos de la aplicación desde los ajustes de tu celular o desinstalándola. Si tienes dudas sobre esta política o quieres consultar algo sobre tus datos, escríbenos.</p>
+
+  <h2>7. Cambios en esta política</h2>
+  <p>Si el juego cambia la forma de usar tu información, actualizaremos esta página y la fecha de arriba.</p>
+
+  <h2>8. Contacto</h2>
+  <p id="contacto">Escríbenos por WhatsApp al <a href="https://wa.me/573106512541">+57 310 651 2541</a>, o desde el juego: <em>Ajustes ⚙️ → Enviar comentario</em>.</p>
+
+  <footer>Camino Bíblico</footer>
+</main>
+
+<script>
+  // Si se llena, se añade también un correo de contacto.
+  const CORREO = '';
+  if (CORREO) {
+    const c = document.getElementById('contacto');
+    c.appendChild(document.createTextNode(' También puedes escribir a '));
+    const a = document.createElement('a');
+    a.href = 'mailto:' + CORREO;
+    a.textContent = CORREO;
+    c.appendChild(a);
+    c.appendChild(document.createTextNode('.'));
+  }
+</script>
+</body>
+</html>

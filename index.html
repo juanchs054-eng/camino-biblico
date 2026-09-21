@@ -589,6 +589,57 @@
   input:checked + .slider-tog:before{transform:translateX(22px);}
   .close-settings{margin-top:16px; width:100%;}
 
+  /* ---- Desafío del día: tarjeta del mapa ---- */
+  .daily-card{
+    margin:10px 16px 0; padding:12px 14px; border-radius:16px;
+    background:linear-gradient(135deg,#40261a,#241a2e); border:1px solid var(--gold-dark);
+    display:flex; align-items:center; gap:12px; cursor:pointer;
+  }
+  .daily-card:not(.done){ box-shadow:0 0 14px rgba(255,160,60,0.28); }
+  .daily-card.done{ opacity:0.78; }
+  .daily-flame{ font-size:1.7rem; line-height:1; }
+  .daily-info{ flex:1; }
+  .daily-title{ font-weight:700; color:var(--gold); font-size:0.95rem; }
+  .daily-sub{ font-size:0.75rem; color:#c9c3d8; margin-top:2px; }
+  .daily-streak{
+    min-width:34px; text-align:center; font-weight:800; color:#ffb347;
+    background:rgba(0,0,0,0.35); border:1px solid var(--gold-dark); border-radius:14px; padding:4px 10px;
+  }
+
+  /* ---- Ventanas: desafío del día, comentarios y "Acerca de" ---- */
+  .cb-modal{
+    position:absolute; inset:0; background:rgba(5,6,15,0.92); z-index:60;
+    display:none; overflow-y:auto; padding:16px 0; box-sizing:border-box;
+  }
+  .cb-modal.show{ display:flex; }
+  .cb-modal .settings-box{ margin:auto; }
+  .cb-title{ color:var(--gold); text-align:center; margin:6px 0 10px; }
+  .daily-emoji{ font-size:2.6rem; text-align:center; line-height:1.1; }
+  .daily-text{ color:var(--parchment); line-height:1.45; font-size:0.95rem; text-align:center; margin:0 0 12px; }
+  .daily-line{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:9px 0; border-bottom:1px solid #2a2d4d; font-size:0.92rem;
+  }
+  .daily-total{ color:var(--gold); font-weight:800; }
+  .daily-libro{ font-size:0.75rem; color:var(--gold); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px; }
+  .settings-action{
+    display:block; width:100%; margin-top:10px; padding:12px; border-radius:12px;
+    border:2px solid var(--gold-dark); background:#1a1e3d; color:var(--parchment);
+    font-family:inherit; font-size:0.95rem; font-weight:600; text-align:center;
+    text-decoration:none; cursor:pointer; box-sizing:border-box;
+  }
+  .cb-ghost{
+    background:none; border:none; color:#b9b6c9; font-family:inherit; font-size:0.9rem;
+    margin-top:10px; width:100%; padding:8px; cursor:pointer;
+  }
+  .fb-text{
+    width:100%; min-height:110px; border-radius:12px; border:2px solid #33375c;
+    background:#1a1e3d; color:var(--parchment); padding:12px; font-family:inherit;
+    font-size:0.95rem; resize:vertical; box-sizing:border-box;
+  }
+  .fb-error{ color:#ff8a7a; font-size:0.8rem; min-height:1.1em; margin-top:6px; }
+  .fb-note{ font-size:0.72rem; color:#b9b6c9; margin:10px 0 0; line-height:1.35; }
+
   /* ============ CINEMÁTICA ============ */
   #screen-cinema{background:#000; padding:0;}
   .cine-scene{position:absolute; inset:0; display:none; overflow:hidden;}
@@ -702,6 +753,14 @@
       <div class="avatar-card-name" id="avatarOutfitName">Túnica de hojas</div>
       <div class="avatar-card-hint">Toca para personalizar ›</div>
     </div>
+  </div>
+  <div class="daily-card" id="dailyCard" onclick="openDaily()">
+    <div class="daily-flame">🔥</div>
+    <div class="daily-info">
+      <div class="daily-title">Desafío del día</div>
+      <div class="daily-sub" id="dailySub">3 preguntas · gana monedas</div>
+    </div>
+    <div class="daily-streak" id="dailyStreakBadge">0</div>
   </div>
   <div class="map-scroll">
     <div class="map-path" id="mapPath"></div>
@@ -907,7 +966,45 @@
         <span class="slider-tog"></span>
       </label>
     </div>
+    <button class="settings-action" onclick="abrirComentario()">💬 Enviar comentario</button>
+    <button class="settings-action" onclick="abrirAbout()">ℹ️ Acerca de</button>
     <button class="btn close-settings" onclick="closeSettings()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Desafío del día -->
+<div id="dailyModal" class="cb-modal">
+  <div class="settings-box" id="dailyBody"></div>
+</div>
+
+<!-- Enviar comentario -->
+<div id="feedbackModal" class="cb-modal">
+  <div class="settings-box">
+    <h3>💬 Enviar comentario</h3>
+    <p class="daily-text" style="text-align:left;">Cuéntanos qué te pareció el juego, si algo falló o qué te gustaría que tuviera.</p>
+    <div class="gender-switch-row" id="fbTipos">
+      <button class="gender-btn active" data-tipo="Error" onclick="elegirTipoComentario(this)">🐞 Error</button>
+      <button class="gender-btn" data-tipo="Idea" onclick="elegirTipoComentario(this)">💡 Idea</button>
+      <button class="gender-btn" data-tipo="Otro" onclick="elegirTipoComentario(this)">🙂 Otro</button>
+    </div>
+    <textarea id="fbTexto" class="fb-text" maxlength="600" placeholder="Escribe aquí tu comentario…"></textarea>
+    <div class="fb-error" id="fbError"></div>
+    <div id="fbEnviar"></div>
+    <p class="fb-note">Al enviarlo se añaden la versión del juego y datos básicos de tu celular, para ayudarnos a encontrar los errores. Tú decides por dónde enviarlo.</p>
+    <button class="cb-ghost" onclick="closeFeedback()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Acerca de -->
+<div id="aboutModal" class="cb-modal">
+  <div class="settings-box">
+    <div class="daily-emoji">📖</div>
+    <h3 class="cb-title">Camino Bíblico</h3>
+    <p class="daily-text">Recorre la Biblia libro por libro y vence a sus grandes desafíos.</p>
+    <div class="daily-line"><span>Versión</span><b id="aboutVersion"></b></div>
+    <a class="settings-action" href="privacidad.html" target="_blank" rel="noopener">🔒 Política de privacidad</a>
+    <button class="settings-action" onclick="abrirComentario()">💬 Enviar comentario</button>
+    <button class="btn close-settings" onclick="closeAbout()">Cerrar</button>
   </div>
 </div>
 
@@ -941,6 +1038,8 @@ const state = {
   unlockedAccessories: [],
   unlockedPremium: [],
   pendingPremiumTx: [], // transacciones de Wompi pagadas que aún no se confirmaron en este dispositivo
+  dailyLastDate: null,  // último día (AAAA-MM-DD, hora local) en que se completó el desafío del día
+  dailyStreak: 0,       // días seguidos completando el desafío
 };
 
 /* ================= GUARDADO DE PROGRESO ================= */
@@ -962,6 +1061,8 @@ function saveGame(){
       unlockedAccessories: state.unlockedAccessories,
       unlockedPremium: state.unlockedPremium,
       pendingPremiumTx: state.pendingPremiumTx,
+      dailyLastDate: state.dailyLastDate,
+      dailyStreak: state.dailyStreak,
       bookAttempts: bookAttempts,
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -987,6 +1088,8 @@ function loadGame(){
     state.equippedAccessories = data.equippedAccessories || [];
     state.unlockedPremium = data.unlockedPremium || [];
     state.pendingPremiumTx = data.pendingPremiumTx || [];
+    state.dailyLastDate = data.dailyLastDate || null;
+    state.dailyStreak = data.dailyStreak || 0;
     if(data.bookAttempts){
       Object.keys(data.bookAttempts).forEach(k=>{ bookAttempts[k] = data.bookAttempts[k]; });
     }
@@ -3101,7 +3204,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260918-final2';
+const BUILD_VERSION = '20260919-diario2';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -3677,6 +3780,7 @@ function drawMapPath(){
 }
 
 function renderMap(){
+  try{ actualizarTarjetaDiaria(); }catch(e){}
   if(state.avatarBookIdx === undefined || state.avatarBookIdx === null){
     state.avatarBookIdx = 0;
   }
@@ -6188,6 +6292,261 @@ window.PIEZAS_FINAL.push('U'); sellarVersion();
     return backToMapPrevio.apply(this, arguments);
   };
 })();
+</script>
+
+<script>
+/* ===== Desafío del día, comentarios y "Acerca de" ===== */
+
+/* A dónde llegan los comentarios de los jugadores. Se llena UNO o LOS DOS:
+     CONTACTO_CORREO   -> "tucorreo@gmail.com"
+     CONTACTO_WHATSAPP -> número con código de país y solo dígitos ("573001234567")
+   Si los dos están vacíos, "Enviar comentario" abre el menú de compartir del
+   celular y el jugador elige a quién mandarlo. */
+const CONTACTO_CORREO = '';
+const CONTACTO_WHATSAPP = '573106512541';
+
+/* --- Desafío del día y racha --- */
+const DAILY_PREGUNTAS = 3;         // preguntas por día
+const DAILY_MONEDAS_ACIERTO = 10;  // monedas por respuesta correcta
+const DAILY_BONO_RACHA = 5;        // monedas extra por cada día de racha...
+const DAILY_RACHA_MAX = 7;         // ...hasta un máximo de 7 días (+35)
+
+function fechaLocalISO(d){
+  d = d || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* Estado de hoy: si ya se hizo y cuánta racha sigue viva. La racha se mantiene
+   si el último desafío fue hoy o ayer; si pasó más de un día, se rompió. */
+function estadoDiario(){
+  const hoy = fechaLocalISO();
+  const ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
+  const ult = state.dailyLastDate || null;
+  const hecho = !!ult && ult >= hoy;                          // (si el reloj se atrasó, cuenta como hecho)
+  const viva = !!ult && (ult >= hoy || ult === fechaLocalISO(ayer));
+  return { hoy, hecho, racha: viva ? (state.dailyStreak || 0) : 0 };
+}
+
+function diasTexto(n){ return n + (n === 1 ? ' día' : ' días'); }
+
+function actualizarTarjetaDiaria(){
+  const card = document.getElementById('dailyCard');
+  if(!card) return;
+  const e = estadoDiario();
+  card.classList.toggle('done', e.hecho);
+  document.getElementById('dailyStreakBadge').textContent = e.racha;
+  document.getElementById('dailySub').textContent = e.hecho
+    ? '¡Completado hoy! Vuelve mañana'
+    : (e.racha > 0 ? 'Racha de ' + diasTexto(e.racha) + ' · ¡no la pierdas!' : DAILY_PREGUNTAS + ' preguntas · gana monedas');
+}
+
+let daily = null;   // { preguntas, i, aciertos, bloqueado } mientras se juega
+
+function openDaily(){
+  const e = estadoDiario();
+  const box = document.getElementById('dailyBody');
+  daily = null;
+  if(e.hecho){
+    box.innerHTML =
+      '<div class="daily-emoji">✅</div><h3 class="cb-title">¡Desafío completado!</h3>' +
+      '<p class="daily-text">Ya hiciste el desafío de hoy. Vuelve mañana para llegar a <b>' + diasTexto(e.racha + 1) + '</b> de racha.</p>' +
+      '<div class="daily-line"><span>Racha actual</span><b>🔥 ' + diasTexto(e.racha) + '</b></div>' +
+      '<button class="btn close-settings" onclick="closeDaily()">Cerrar</button>';
+  } else {
+    const maximo = DAILY_PREGUNTAS * DAILY_MONEDAS_ACIERTO + DAILY_BONO_RACHA * Math.min(e.racha + 1, DAILY_RACHA_MAX);
+    box.innerHTML =
+      '<div class="daily-emoji">🔥</div><h3 class="cb-title">Desafío del día</h3>' +
+      '<p class="daily-text">' + DAILY_PREGUNTAS + ' preguntas de los libros que ya recorriste. Juégalo una vez al día para mantener tu racha y ganar monedas.</p>' +
+      '<div class="daily-line"><span>Racha actual</span><b>' + (e.racha > 0 ? '🔥 ' + diasTexto(e.racha) : 'Empieza hoy') + '</b></div>' +
+      '<div class="daily-line"><span>Premio de hoy</span><b>hasta ' + maximo + ' 🪙</b></div>' +
+      '<button class="btn close-settings" onclick="empezarDaily()">¡Comenzar!</button>' +
+      '<button class="cb-ghost" onclick="closeDaily()">Ahora no</button>';
+  }
+  document.getElementById('dailyModal').classList.add('show');
+}
+
+function closeDaily(){
+  daily = null;
+  document.getElementById('dailyModal').classList.remove('show');
+  actualizarTarjetaDiaria();
+}
+
+function empezarDaily(){
+  // Preguntas de los libros que el jugador ya desbloqueó.
+  const hasta = Math.min(state.unlockedBook || 0, BOOKS.length - 1);
+  const pool = [];
+  for(let b = 0; b <= hasta; b++){
+    (BOOKS[b].questions || []).forEach(q => pool.push({ q: q, libro: BOOKS[b].name }));
+  }
+  const elegidas = shuffleArray(pool).slice(0, DAILY_PREGUNTAS).map(({ q, libro }) => {
+    // Las respuestas se mezclan para que la correcta no quede siempre en el mismo lugar.
+    const orden = shuffleArray(q.opts.map((_, i) => i));
+    return { texto: q.q, libro: libro, opciones: orden.map(i => q.opts[i]), correcta: orden.indexOf(q.correct) };
+  });
+  if(!elegidas.length){ closeDaily(); return; }
+  daily = { preguntas: elegidas, i: 0, aciertos: 0, bloqueado: false };
+  mostrarPreguntaDaily();
+}
+
+function mostrarPreguntaDaily(){
+  const p = daily.preguntas[daily.i];
+  daily.bloqueado = false;
+  const box = document.getElementById('dailyBody');
+  box.innerHTML = '';
+  const top = document.createElement('div'); top.className = 'trivia-topbar';
+  const etiqueta = document.createElement('span'); etiqueta.textContent = 'Pregunta ' + (daily.i + 1) + ' de ' + daily.preguntas.length;
+  const puntos = document.createElement('div'); puntos.className = 'q-progress';
+  daily.preguntas.forEach((_, k) => {
+    const d = document.createElement('div'); d.className = 'q-dot' + (k < daily.i ? ' done' : ''); puntos.appendChild(d);
+  });
+  top.appendChild(etiqueta); top.appendChild(puntos);
+  const libro = document.createElement('div'); libro.className = 'daily-libro'; libro.textContent = p.libro;
+  const texto = document.createElement('p'); texto.className = 'question-text'; texto.textContent = p.texto;
+  const opciones = document.createElement('div'); opciones.className = 'options'; opciones.style.marginTop = '16px';
+  p.opciones.forEach((t, k) => {
+    const b = document.createElement('button'); b.className = 'option-btn'; b.textContent = t;
+    b.onclick = () => responderDaily(k, b);
+    opciones.appendChild(b);
+  });
+  box.appendChild(top); box.appendChild(libro); box.appendChild(texto); box.appendChild(opciones);
+}
+
+function responderDaily(k, boton){
+  if(!daily || daily.bloqueado) return;
+  daily.bloqueado = true;
+  const p = daily.preguntas[daily.i];
+  const acierto = k === p.correcta;
+  boton.classList.add(acierto ? 'correct' : 'wrong');
+  if(acierto){
+    daily.aciertos++;
+    sfxCorrect();
+  } else {
+    sfxWrong();
+    // Se muestra cuál era la correcta, para que se aprenda.
+    const botones = document.querySelectorAll('#dailyBody .option-btn');
+    if(botones[p.correcta]) botones[p.correcta].classList.add('correct');
+  }
+  setTimeout(() => {
+    if(!daily) return;                       // se cerró la ventana mientras tanto
+    daily.i++;
+    if(daily.i >= daily.preguntas.length) terminarDaily(); else mostrarPreguntaDaily();
+  }, acierto ? 800 : 1500);
+}
+
+function terminarDaily(){
+  const e = estadoDiario();
+  if(e.hecho){ closeDaily(); return; }       // por si ya se completó en otra ventana
+  const nPreguntas = daily.preguntas.length;
+  const aciertos = daily.aciertos;
+  const racha = e.racha + 1;
+  const monedasAciertos = aciertos * DAILY_MONEDAS_ACIERTO;
+  const bono = DAILY_BONO_RACHA * Math.min(racha, DAILY_RACHA_MAX);
+  const total = monedasAciertos + bono;
+
+  state.coins += total;
+  state.dailyStreak = racha;
+  state.dailyLastDate = e.hoy;
+  const chip = document.getElementById('coinCount');
+  if(chip) chip.textContent = state.coins;
+  saveGame();
+  try{ sfxWin(); vibrate([120, 60, 120]); }catch(err){}
+
+  const perfecto = aciertos === nPreguntas;
+  document.getElementById('dailyBody').innerHTML =
+    '<div class="daily-emoji">' + (perfecto ? '🏆' : '🔥') + '</div>' +
+    '<h3 class="cb-title">' + (perfecto ? '¡Perfecto!' : '¡Desafío completado!') + '</h3>' +
+    '<div class="daily-line"><span>Aciertos</span><b>' + aciertos + ' de ' + nPreguntas + '</b></div>' +
+    '<div class="daily-line"><span>Monedas por aciertos</span><b>+' + monedasAciertos + ' 🪙</b></div>' +
+    '<div class="daily-line"><span>Bono de racha</span><b>+' + bono + ' 🪙</b></div>' +
+    '<div class="daily-line"><span class="daily-total">Total</span><b class="daily-total">+' + total + ' 🪙</b></div>' +
+    '<div class="daily-line"><span>Racha</span><b>🔥 ' + diasTexto(racha) + '</b></div>' +
+    '<p class="daily-text" style="margin-top:12px;">Vuelve mañana para seguir sumando.</p>' +
+    '<button class="btn close-settings" onclick="closeDaily()">Continuar</button>';
+  daily.bloqueado = true;
+  actualizarTarjetaDiaria();
+}
+
+/* --- Enviar comentario --- */
+let comentarioTipo = 'Error';
+
+function elegirTipoComentario(btn){
+  comentarioTipo = btn.dataset.tipo;
+  document.querySelectorAll('#fbTipos .gender-btn').forEach(b => b.classList.toggle('active', b === btn));
+}
+
+function abrirComentario(){
+  try{ closeSettings(); }catch(e){}
+  closeAbout();
+  document.getElementById('fbTexto').value = '';
+  document.getElementById('fbError').textContent = '';
+  const cont = document.getElementById('fbEnviar');
+  cont.innerHTML = '';
+  const crear = (texto, via) => {
+    const b = document.createElement('button'); b.className = 'btn close-settings'; b.textContent = texto;
+    b.onclick = () => enviarComentario(via); cont.appendChild(b);
+  };
+  if(CONTACTO_CORREO) crear('✉️ Enviar por correo', 'correo');
+  if(CONTACTO_WHATSAPP) crear('💬 Enviar por WhatsApp', 'whatsapp');
+  if(!CONTACTO_CORREO && !CONTACTO_WHATSAPP) crear('📤 Enviar', 'compartir');
+  document.getElementById('feedbackModal').classList.add('show');
+}
+
+function closeFeedback(){ document.getElementById('feedbackModal').classList.remove('show'); }
+
+function textoComentario(mensaje){
+  const libro = (BOOKS[Math.min(state.unlockedBook || 0, BOOKS.length - 1)] || {}).name || '';
+  return '📖 Camino Bíblico — Comentario (' + comentarioTipo + ')\n\n' + mensaje +
+    '\n\n—\nVersión: ' + BUILD_VERSION + '\nLibro actual: ' + libro +
+    '\nDispositivo: ' + (navigator.userAgent || '').slice(0, 160);
+}
+
+function graciasComentario(msg){
+  document.getElementById('fbError').textContent = '';
+  const cont = document.getElementById('fbEnviar');
+  cont.innerHTML = '';
+  const p = document.createElement('p'); p.className = 'daily-text'; p.textContent = '🙏 ' + msg;
+  cont.appendChild(p);
+}
+
+function enviarComentario(via){
+  const mensaje = document.getElementById('fbTexto').value.trim();
+  const error = document.getElementById('fbError');
+  if(mensaje.length < 5){ error.textContent = 'Escribe un poco más para que podamos entenderte 🙂'; return; }
+  error.textContent = '';
+  const texto = textoComentario(mensaje);
+  const asunto = 'Camino Bíblico — ' + comentarioTipo;
+
+  if(via === 'correo'){
+    window.location.href = 'mailto:' + CONTACTO_CORREO + '?subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(texto);
+    graciasComentario('Se abrió tu correo con el mensaje listo. Solo falta pulsar enviar.');
+  } else if(via === 'whatsapp'){
+    const url = 'https://wa.me/' + CONTACTO_WHATSAPP.replace(/\D/g, '') + '?text=' + encodeURIComponent(texto);
+    if(!window.open(url, '_blank')) window.location.href = url;
+    graciasComentario('Se abrió WhatsApp con el mensaje listo. Solo falta pulsar enviar.');
+  } else if(navigator.share){
+    navigator.share({ title: asunto, text: texto })
+      .then(() => graciasComentario('¡Gracias por tu comentario!'))
+      .catch(() => {});                      // el jugador canceló el menú de compartir
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texto)
+      .then(() => graciasComentario('Copiamos tu mensaje. Pégalo en un chat y envíaselo a quien te invitó a probar el juego.'))
+      .catch(() => { error.textContent = 'No pudimos copiar el mensaje. Cópialo a mano y envíalo.'; });
+  } else {
+    error.textContent = 'Tu celular no permite enviarlo desde aquí. Cópialo a mano y envíalo.';
+  }
+}
+
+/* --- Acerca de --- */
+function abrirAbout(){
+  try{ closeSettings(); }catch(e){}
+  document.getElementById('aboutVersion').textContent = BUILD_VERSION;
+  document.getElementById('aboutModal').classList.add('show');
+}
+function closeAbout(){ document.getElementById('aboutModal').classList.remove('show'); }
+
+// Si el juego se queda abierto de un día para otro, la tarjeta se actualiza al volver.
+document.addEventListener('visibilitychange', () => { if(!document.hidden) actualizarTarjetaDiaria(); });
+try{ actualizarTarjetaDiaria(); }catch(e){}
 </script>
 
 </body>
