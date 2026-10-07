@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "dev.pages.camino_biblico.twa",
-        "sha256_cert_fingerprints": ["8C:C2:6F:DA:6B:1C:A9:BF:D3:77:9F:0B:23:59:89:D4:3E:CB:63:52:9B:51:8C:C2:F5:D5:30:43:5D:86:E3:BF"]
+        "sha256_cert_fingerprints": ["A0:FD:9C:F7:F6:26:2A:3F:5B:21:71:7C:61:BF:3A:F4"]
       }
     }]
