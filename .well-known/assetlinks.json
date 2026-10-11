@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "dev.pages.camino_biblico.twa",
-        "sha256_cert_fingerprints": ["32:BC:AC:B1:11:07:0A:A8:60:8D:4F:95:55:92:25:E1:BB:3E:93:D6:C1:0D:DA:D5:0C:FB:0C:85:06:03:FB:35"]
+        "sha256_cert_fingerprints": ["32:BC:AC:B1:11:07:0A:A8:60:8D:4F:95:55:92:25:E1:BB:3E:93:D6:C1:0D:DA:D5:0C:FB:0C:85:06:03:FB:35","3E:80:BB:86:31:90:FC:82:79:C0:5C:52:67:00:FE:0B:68:8E:6B:61:44:A8:17:B3:B3:B3:05:C5:49:5A:1E:17"]
       }
     }]
