@@ -411,6 +411,8 @@
   .ext-espada::before{content:''; position:absolute; top:-16px; left:-8px; width:24px; height:36px; background:radial-gradient(circle at 50% 70%,#fffacd 0%,#ff8c00 45%,#ff4500 75%,transparent 100%); border-radius:50% 50% 45% 45%; animation:llama .45s infinite alternate; filter:blur(.5px);}
   .ext-espada::after{content:''; position:absolute; bottom:12px; left:-6px; width:22px; height:7px; background:linear-gradient(90deg,#8b6914,#ffd700,#8b6914); border:1px solid #6b4e0e; border-radius:3px;}
   @keyframes llama{from{transform:scaleY(.85);} to{transform:scaleY(1.15);}}
+  /* Fuego animado de la espada de la Armadura de Dios (se dibuja con JS en un canvas) */
+  .sword-fire-canvas{position:absolute; pointer-events:none; z-index:11; mix-blend-mode:screen;}
 
   /* ---- Verificación de adulto (PIN compras) ---- */
   .pin-overlay{position:fixed; inset:0; background:rgba(8,8,18,.78); z-index:9999; display:none; align-items:center; justify-content:center;}
@@ -3204,7 +3206,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20260919-diario2';
+const BUILD_VERSION = '20261013-baston';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -3217,6 +3219,301 @@ const FULLBODY_CACHE = {};
 // Carpeta (en la raíz del sitio) donde viven TODAS las imágenes de personajes
 // y trajes. Para cambiarla, solo se edita esta línea. Debe terminar en '/'.
 const IMG_DIR = 'imagenes/';
+
+// ===== Fuego animado de la espada (Toda la Armadura de Dios) =====
+// Dibuja llamas, brillo y chispas en un canvas encima de la imagen del caballero
+// (la versión "_shop" de la imagen ya no trae el fuego pintado). Solo anima cuando
+// la pantalla está visible, así no gasta batería en el resto del juego.
+const SWORD_FIRE = (function(){
+  const IMG_W = 600, IMG_H = 900;               // tamaño de la imagen original
+  const BASE = {x:166, y:306}, TIP = {x:344, y:44}; // la hoja, en coordenadas de la imagen
+  const RES = 3, MARGIN = 36;                   // resolución del canvas y margen extra para que las llamas suban libres
+  const BDX = TIP.x - BASE.x, BDY = TIP.y - BASE.y;
+  const BL = Math.hypot(BDX, BDY);
+  const PX = -BDY / BL, PY = BDX / BL;          // perpendicular a la hoja
+  const states = new Map();
+  let raf = 0, last = 0, clock = 0;
+
+  // Sprites pre-dibujados (una bolita suave por color) para que sea liviano
+  function makeSprite(r,g,b){
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const x = c.getContext('2d');
+    const gr = x.createRadialGradient(32,32,0,32,32,32);
+    gr.addColorStop(0,   'rgba('+r+','+g+','+b+',1)');
+    gr.addColorStop(0.35,'rgba('+r+','+g+','+b+',0.62)');
+    gr.addColorStop(1,   'rgba('+r+','+g+','+b+',0)');
+    x.fillStyle = gr; x.fillRect(0,0,64,64);
+    return c;
+  }
+  const KEYS = [[0,[255,236,160]],[0.22,[255,172,52]],[0.5,[243,98,20]],[0.8,[190,38,10]],[1,[95,16,8]]];
+  const NST = 12, SPR = [];
+  for(let i=0;i<NST;i++){
+    const t = i/(NST-1); let k = 0;
+    while(k < KEYS.length-2 && t > KEYS[k+1][0]) k++;
+    const a = KEYS[k], b = KEYS[k+1], u = Math.max(0,Math.min(1,(t-a[0])/(b[0]-a[0])));
+    SPR.push(makeSprite(Math.round(a[1][0]+(b[1][0]-a[1][0])*u), Math.round(a[1][1]+(b[1][1]-a[1][1])*u), Math.round(a[1][2]+(b[1][2]-a[1][2])*u)));
+  }
+  const GLOW = makeSprite(255,120,20), SPARK = makeSprite(255,225,120);
+
+  function layout(st){
+    const el = st.el, cw = el.offsetWidth, ch = el.offsetHeight;
+    if(!cw || !ch) return false;
+    if(st.cw === cw && st.ch === ch) return true;
+    st.cw = cw; st.ch = ch;
+    const s = Math.min(cw/IMG_W, ch/IMG_H);       // la imagen está en "contain" abajo-centro
+    const ox = (cw - IMG_W*s)/2, oy = ch - IMG_H*s;
+    const cv = st.canvas;
+    cv.style.left = (-MARGIN)+'px'; cv.style.top = (-MARGIN)+'px';
+    cv.style.width = (cw+2*MARGIN)+'px'; cv.style.height = (ch+2*MARGIN)+'px';
+    cv.width = Math.round((cw+2*MARGIN)*RES); cv.height = Math.round((ch+2*MARGIN)*RES);
+    st.k = s*RES; st.tx = (MARGIN+ox)*RES; st.ty = (MARGIN+oy)*RES;
+    return true;
+  }
+
+  function spawn(st, big){
+    const u = big ? 0.82 + Math.random()*0.18 : Math.pow(Math.random(), 0.85);
+    const j = (Math.random()-0.5) * 46 - 6;
+    const life = big ? 1.1 + Math.random()*0.5 : 0.7 + Math.random()*0.55 + u*0.2;
+    st.parts.push({
+      x0: BASE.x + BDX*u + PX*j, y0: BASE.y + BDY*u + PY*j,
+      vx: -22 + (Math.random()-0.5)*34, vy: -(big ? 105 : 70) - Math.random()*60,
+      r: (big ? 32 : 21) + Math.random()*12, life: life, t: 0,
+      f: 5 + Math.random()*6, ph: Math.random()*6.28, amp: 5 + Math.random()*9
+    });
+  }
+  function spawnSpark(st){
+    const u = Math.random();
+    st.sparks.push({
+      x0: BASE.x + BDX*u + (Math.random()-0.5)*40, y0: BASE.y + BDY*u + (Math.random()-0.5)*20,
+      vx: -20 + (Math.random()-0.5)*50, vy: -(70 + Math.random()*110),
+      life: 0.8 + Math.random()*1.0, t: 0, r: 2.4 + Math.random()*3.2,
+      f: 4 + Math.random()*6, ph: Math.random()*6.28
+    });
+  }
+
+  function draw(st, dt){
+    const ctx = st.ctx, k = st.k;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,st.canvas.width,st.canvas.height);
+    ctx.globalCompositeOperation = 'lighter';
+    const flick = 0.82 + 0.18*Math.sin(clock*13) + 0.08*Math.sin(clock*31+1.3);
+
+    // brillo suave a lo largo de la hoja
+    ctx.setTransform(k,0,0,k,st.tx,st.ty);
+    for(let i=0;i<7;i++){
+      const u = i/6, gx = BASE.x+BDX*u, gy = BASE.y+BDY*u;
+      ctx.globalAlpha = Math.min(1, (0.13 + 0.05*Math.sin(clock*8+i*1.7)) * flick);
+      ctx.drawImage(GLOW, gx-62, gy-62, 124, 124);
+    }
+    // la hoja al rojo vivo
+    ctx.globalAlpha = 0.16*flick; ctx.strokeStyle = 'rgb(255,150,50)'; ctx.lineWidth = 17; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(BASE.x+BDX*0.03, BASE.y+BDY*0.03); ctx.lineTo(TIP.x, TIP.y); ctx.stroke();
+    ctx.globalAlpha = 0.22*flick; ctx.strokeStyle = 'rgb(255,240,190)'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(BASE.x+BDX*0.05, BASE.y+BDY*0.05); ctx.lineTo(TIP.x, TIP.y); ctx.stroke();
+
+    // llamas
+    const P = st.parts;
+    for(let i=P.length-1;i>=0;i--){
+      const p = P[i]; p.t += dt;
+      if(p.t >= p.life){ P[i] = P[P.length-1]; P.pop(); continue; }
+      const a = p.t / p.life;
+      const x = p.x0 + p.vx*p.t + Math.sin(p.t*p.f + p.ph)*p.amp*(0.35+a);
+      const y = p.y0 + p.vy*p.t;
+      const vx = p.vx + Math.cos(p.t*p.f+p.ph)*p.amp*p.f*(0.35+a), vy = p.vy;
+      const th = Math.atan2(-vx, vy), c = Math.cos(th), s = Math.sin(th);
+      const size = p.r * (a < 0.2 ? 0.55 + a*2.25 : 1 - (a-0.2)*0.78);
+      const alpha = a < 0.12 ? a/0.12 : Math.pow(1-a, 0.8);
+      ctx.globalAlpha = Math.min(1, alpha*0.5);
+      ctx.setTransform(k*c, k*s, -k*s, k*c, st.tx + k*x, st.ty + k*y);
+      ctx.drawImage(SPR[Math.min(NST-1, (a*NST)|0)], -size, -size*1.7, size*2, size*3.4);
+    }
+    // chispas
+    const S = st.sparks;
+    for(let i=S.length-1;i>=0;i--){
+      const p = S[i]; p.t += dt;
+      if(p.t >= p.life){ S[i] = S[S.length-1]; S.pop(); continue; }
+      const a = p.t/p.life;
+      const x = p.x0 + p.vx*p.t + Math.sin(p.t*p.f+p.ph)*10, y = p.y0 + p.vy*p.t;
+      ctx.globalAlpha = Math.min(1, (1-a)*1.2) * (0.6 + 0.4*Math.sin(p.t*30+p.ph));
+      ctx.setTransform(k,0,0,k,st.tx,st.ty);
+      const r = p.r*(1-a*0.5);
+      ctx.drawImage(SPARK, x-r*2, y-r*2, r*4, r*4);
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function frame(now){
+    raf = 0;
+    if(!states.size) return;
+    const dt = Math.min(0.05, last ? (now-last)/1000 : 0.016); last = now; clock += dt;
+    if(!document.hidden){
+      states.forEach(function(st){
+        if(!st.canvas.isConnected || st.canvas.offsetParent === null) return;   // pantalla oculta: no dibujar
+        if(!layout(st)) return;
+        st.acc += dt*150; while(st.acc >= 1){ spawn(st,false); st.acc -= 1; }
+        st.bigAcc += dt*12; while(st.bigAcc >= 1){ spawn(st,true); st.bigAcc -= 1; }
+        st.sparkAcc += dt*16; while(st.sparkAcc >= 1){ spawnSpark(st); st.sparkAcc -= 1; }
+        draw(st, dt);
+      });
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  function start(){ if(!raf){ last = 0; raf = requestAnimationFrame(frame); } }
+
+  return {
+    mount: function(el){
+      if(states.has(el)) { start(); return; }
+      const cv = document.createElement('canvas');
+      cv.className = 'sword-fire-canvas';
+      el.appendChild(cv);
+      states.set(el, { el:el, canvas:cv, ctx:cv.getContext('2d'), parts:[], sparks:[], acc:0, bigAcc:0, sparkAcc:0, cw:0, ch:0 });
+      start();
+    },
+    unmount: function(el){
+      const st = states.get(el);
+      if(!st) return;
+      if(st.canvas.parentNode) st.canvas.parentNode.removeChild(st.canvas);
+      states.delete(el);
+    }
+  };
+})();
+
+// ===== Luz que sube y baja enroscándose por el bastón (Traje de Moisés) =====
+// La imagen "_shop" trae el brillo del bastón tenue; la imagen "_glow" trae solo el brillo dorado
+// a todo color. Aquí se enciende la capa "_glow" con una ventana que sube hasta el gancho y vuelve a bajar.
+const STAFF_GLOW = (function(){
+  const IMG_W = 600, IMG_H = 900, RES = 3, MARGIN = 36;
+  const Y_BOT = 815, Y_TOP = 8, TRAIL = 300, PERIOD = 5.6;
+  // recorrido aproximado del bastón (abajo -> gancho), para ubicar chispas y el resplandor
+  const PATH = [[354,805],[365,750],[377,700],[398,600],[418,500],[428,450],[443,400],[451,350],[462,300],[469,250],[476,200],[475,150],[466,100],[462,70],[480,45],[510,38],[545,50],[558,80],[550,110],[530,122]];
+  const DENSE = [];
+  for(let i=0;i<PATH.length-1;i++){
+    const a = PATH[i], b = PATH[i+1], n = Math.max(1, Math.round(Math.hypot(b[0]-a[0], b[1]-a[1])/4));
+    for(let j=0;j<n;j++) DENSE.push([a[0]+(b[0]-a[0])*j/n, a[1]+(b[1]-a[1])*j/n]);
+  }
+  function pathAtY(y){
+    let c = [], best = 1e9, bp = DENSE[0];
+    for(let i=0;i<DENSE.length;i++){ const d = Math.abs(DENSE[i][1]-y); if(d < 12) c.push(DENSE[i]); if(d < best){ best = d; bp = DENSE[i]; } }
+    return c.length ? c[(Math.random()*c.length)|0] : bp;
+  }
+  function makeSprite(r,g,b){
+    const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+    const gr = x.createRadialGradient(32,32,0,32,32,32);
+    gr.addColorStop(0,'rgba('+r+','+g+','+b+',1)'); gr.addColorStop(0.35,'rgba('+r+','+g+','+b+',0.55)'); gr.addColorStop(1,'rgba('+r+','+g+','+b+',0)');
+    x.fillStyle = gr; x.fillRect(0,0,64,64); return c;
+  }
+  const ORB = makeSprite(255,170,50), SPARK = makeSprite(255,232,140);
+  const images = {};
+  function loadImg(url, cb){
+    let e = images[url];
+    if(!e){ e = images[url] = { img: new Image(), ok: false, cbs: [] }; e.img.onload = function(){ e.ok = true; e.cbs.forEach(function(f){ f(); }); e.cbs = []; }; e.img.src = url; }
+    if(e.ok) cb(); else e.cbs.push(cb);
+    return e;
+  }
+  const ease = function(u){ return u < 0.5 ? 2*u*u : 1 - Math.pow(-2*u+2, 2)/2; };
+  const states = new Map(); let raf = 0, last = 0, clock = 0;
+
+  function layout(st){
+    const el = st.el, cw = el.offsetWidth, ch = el.offsetHeight;
+    if(!cw || !ch) return false;
+    if(st.cw === cw && st.ch === ch) return true;
+    st.cw = cw; st.ch = ch;
+    const s = Math.min(cw/IMG_W, ch/IMG_H), ox = (cw - IMG_W*s)/2, oy = ch - IMG_H*s;
+    const w = Math.round((cw+2*MARGIN)*RES), h = Math.round((ch+2*MARGIN)*RES);
+    const cv = st.canvas; cv.style.left = (-MARGIN)+'px'; cv.style.top = (-MARGIN)+'px';
+    cv.style.width = (cw+2*MARGIN)+'px'; cv.style.height = (ch+2*MARGIN)+'px'; cv.width = w; cv.height = h;
+    st.off.width = w; st.off.height = h;
+    st.k = s*RES; st.tx = (MARGIN+ox)*RES; st.ty = (MARGIN+oy)*RES;
+    return true;
+  }
+  function headState(t){
+    const u = (t % PERIOD) / PERIOD;
+    let p, up;
+    if(u < 0.46){ p = ease(u/0.46); up = true; }
+    else if(u < 0.5){ p = 1; up = true; }
+    else if(u < 0.96){ p = 1 - ease((u-0.5)/0.46); up = false; }
+    else { p = 0; up = false; }
+    // up: la cabeza va de abajo hacia arriba y la estela queda abajo; down: al revés
+    const y = Y_BOT + (Y_TOP - Y_BOT) * p;
+    return { y: y, up: up, moving: !(u >= 0.46 && u < 0.5) && !(u >= 0.96) };
+  }
+  function draw(st, dt){
+    const ctx = st.ctx, o = st.octx, k = st.k, W = st.canvas.width, H = st.canvas.height;
+    const hs = headState(clock + st.t0);
+    const pulse = 0.85 + 0.15*Math.sin(clock*9);
+    ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
+    // 1) brillo suave siempre presente
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.16 + 0.07*Math.sin(clock*3.2);
+    ctx.setTransform(k,0,0,k,st.tx,st.ty); ctx.drawImage(st.glow, 0, 0, IMG_W, IMG_H);
+    // 2) la luz que sube/baja: capa de brillo recortada con una ventana con estela
+    o.setTransform(1,0,0,1,0,0); o.globalCompositeOperation = 'source-over'; o.clearRect(0,0,W,H);
+    o.setTransform(k,0,0,k,st.tx,st.ty); o.drawImage(st.glow, 0, 0, IMG_W, IMG_H);
+    o.setTransform(1,0,0,1,0,0); o.globalCompositeOperation = 'destination-in';
+    const AHEAD = 34, dir = hs.up ? 1 : -1;               // dir: hacia dónde queda la estela
+    const yt = st.ty + k*(hs.y + dir*TRAIL), yh = st.ty + k*hs.y, ya = st.ty + k*(hs.y - dir*AHEAD);
+    const g = o.createLinearGradient(0, yt, 0, ya), tot = TRAIL + AHEAD;
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(TRAIL*0.6/tot, 'rgba(0,0,0,0.5)'); g.addColorStop(TRAIL/tot, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    o.fillStyle = g;
+    o.fillRect(0, Math.min(yt,ya), W, Math.abs(ya-yt));
+    o.globalCompositeOperation = 'source-over';
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.globalAlpha = 1.0*pulse; ctx.drawImage(st.off, 0, 0);
+    ctx.globalAlpha = 0.55*pulse; ctx.drawImage(st.off, 0, 0);
+    // 3) resplandor en la cabeza de la luz
+    ctx.setTransform(k,0,0,k,st.tx,st.ty);
+    const hp = pathAtY(hs.y);
+    ctx.globalAlpha = 0.55*pulse; ctx.drawImage(ORB, hp[0]-70, hs.y-70, 140, 140);
+    // 4) chispas
+    if(hs.moving){ st.acc += dt*38; while(st.acc >= 1){ st.acc -= 1; const p = pathAtY(hs.y + (Math.random()-0.5)*40);
+      st.sparks.push({ x0: p[0]+(Math.random()-0.5)*22, y0: p[1], vx: (Math.random()-0.5)*50, vy: -(20+Math.random()*70), life: 0.7+Math.random()*0.8, t: 0, r: 3+Math.random()*4.5, f: 4+Math.random()*6, ph: Math.random()*6.28 }); } }
+    const S = st.sparks;
+    for(let i=S.length-1;i>=0;i--){
+      const p = S[i]; p.t += dt;
+      if(p.t >= p.life){ S[i] = S[S.length-1]; S.pop(); continue; }
+      const a = p.t/p.life, x = p.x0 + p.vx*p.t + Math.sin(p.t*p.f+p.ph)*8, y = p.y0 + p.vy*p.t, r = p.r*(1-a*0.5);
+      ctx.globalAlpha = Math.min(1,(1-a)*1.2)*(0.6+0.4*Math.sin(p.t*28+p.ph));
+      ctx.drawImage(SPARK, x-r*2, y-r*2, r*4, r*4);
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+  function frame(now){
+    raf = 0; if(!states.size) return;
+    const dt = Math.min(0.05, last ? (now-last)/1000 : 0.016); last = now; clock += dt;
+    if(!document.hidden){
+      states.forEach(function(st){
+        if(!st.ready || !st.canvas.isConnected || st.canvas.offsetParent === null) return;
+        if(!layout(st)) return;
+        draw(st, dt);
+      });
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  function start(){ if(!raf){ last = 0; raf = requestAnimationFrame(frame); } }
+  return {
+    mount: function(el, glowUrl){
+      const old = states.get(el);
+      if(old && old.url === glowUrl){ start(); return; }
+      if(old) this.unmount(el);
+      const cv = document.createElement('canvas'); cv.className = 'sword-fire-canvas'; el.appendChild(cv);
+      const off = document.createElement('canvas');
+      const st = { el: el, canvas: cv, ctx: cv.getContext('2d'), off: off, octx: off.getContext('2d'), url: glowUrl, glow: null, ready: false, sparks: [], acc: 0, cw: 0, ch: 0, t0: 0 };
+      states.set(el, st);
+      const e = loadImg(glowUrl, function(){ if(states.get(el) === st){ st.glow = e.img; st.ready = true; } });
+      start();
+    },
+    unmount: function(el){
+      const st = states.get(el); if(!st) return;
+      if(st.canvas.parentNode) st.canvas.parentNode.removeChild(st.canvas);
+      states.delete(el);
+    }
+  };
+})();
+
+// Imagen del caballero SIN el fuego pintado (el fuego lo dibuja SWORD_FIRE). Solo mapa y tienda.
+function fullbodyShopFileName(gender, outfitId){
+  return IMG_DIR + gender + '_' + outfitId + '_fullbody_shop.webp';
+}
 
 function fullbodyFileName(gender, outfitId, punch){
   return IMG_DIR + gender + '_' + outfitId + '_fullbody' + (punch ? '_punch' : '') + '.webp';
@@ -3240,6 +3537,8 @@ function warmupFullbodyCache(onDone){
     allOutfits.forEach(o=>{
       jobs.push(checkFullbodyExists(fullbodyFileName(g, o.id, false)));
     });
+    jobs.push(checkFullbodyExists(fullbodyShopFileName(g, 'armadura-Dios')));
+    jobs.push(checkFullbodyExists(fullbodyShopFileName(g, 'moises')));
   });
   Promise.all(jobs).then(()=>{
     // Si la tienda ya estaba abierta cuando terminó de comprobar, refrescar
@@ -3254,9 +3553,9 @@ const AVATAR_PIECES = {
 };
 
 const PREMIUM_OUTFITS = [
-  { id:'armadura-Dios', name:'Toda la Armadura de Dios', cssClass:'outfit-armadura-Dios', extraClass:'ext-espada', hideArms:true, swatch:'#d4af37', price:14000, torsoImg:'outfit_armadura-Dios.webp' },
+  { id:'armadura-Dios', name:'Toda la Armadura de Dios', cssClass:'outfit-armadura-Dios', hideArms:true, swatch:'#d4af37', price:14000, torsoImg:'outfit_armadura-Dios.webp' },
   { id:'jesus', name:'Traje de Jesús', cssClass:'outfit-jesus', swatch:'#f4efe0', price:12000, torsoImg:'outfit_jesus.webp' },
-  { id:'moises', name:'Traje de Moisés', cssClass:'outfit-moises', extraClass:'ext-baston', swatch:'#8a6a3c', price:9000, torsoImg:'outfit_moises.webp' },
+  { id:'moises', name:'Traje de Moisés', cssClass:'outfit-moises', swatch:'#8a6a3c', price:9000, torsoImg:'outfit_moises.webp' },
   { id:'elias', name:'Manto de Elías', cssClass:'outfit-elias', swatch:'#7a5a48', price:9000, torsoImg:'outfit_elias.webp' },
   { id:'david', name:'Traje del Rey David', cssClass:'outfit-david', swatch:'#8a4ab0', price:9000, torsoImg:'outfit_david.webp' },
   { id:'ester', name:'Traje de la Reina Ester', cssClass:'outfit-ester', swatch:'#2aa8a0', price:9000, torsoImg:'outfit_ester.webp' },
@@ -3338,12 +3637,30 @@ function applyOutfitVisuals(){
       // Mientras todavía no sabemos si existe la imagen de cuerpo completo,
       // no mostramos NADA (antes se veía el muñeco armado por piezas sueltas).
       const esperandoImagen = known === undefined;
+      // Espada de fuego animada: solo en mapa y tienda (en la pelea sigue la imagen original).
+      let fbUrl = fullbodyCandidate, fireOn = false, glowUrl = '';
+      if((outfit.id === 'armadura-Dios' || outfit.id === 'moises') && el.id !== 'fighterPlayer' && showFullbody){
+        const shopUrl = fullbodyShopFileName(genderKey, outfit.id);
+        const shopKnown = FULLBODY_CACHE[shopUrl];
+        if(shopKnown === true){
+          fbUrl = shopUrl;
+          if(outfit.id === 'armadura-Dios') fireOn = true;
+          else glowUrl = IMG_DIR + genderKey + '_moises_fullbody_glow.webp?' + BUILD_VERSION;
+        }
+        else if(shopKnown === undefined){
+          checkFullbodyExists(shopUrl).then(ok=>{
+            if(ok && state.equippedOutfit === outfit.id) applyOutfitVisuals();
+          });
+        }
+      }
       if(showFullbody){
         fullbodyNode.style.display = 'block';
-        fullbodyNode.style.backgroundImage = 'url("' + fullbodyCandidate + '?' + BUILD_VERSION + '")';
+        fullbodyNode.style.backgroundImage = 'url("' + fbUrl + '?' + BUILD_VERSION + '")';
       }else{
         fullbodyNode.style.display = 'none';
       }
+      if(fireOn) SWORD_FIRE.mount(el); else SWORD_FIRE.unmount(el);
+      if(glowUrl) STAFF_GLOW.mount(el, glowUrl); else STAFF_GLOW.unmount(el);
       ['.p-hair','.p-head','.p-torso','.p-leg','.p-arm-guard','.p-arm-punch'].forEach(sel=>{
         el.querySelectorAll(sel).forEach(n=>{ n.style.visibility = (showFullbody || esperandoImagen) ? 'hidden' : ''; });
       });
