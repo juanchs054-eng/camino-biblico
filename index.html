@@ -413,6 +413,7 @@
   @keyframes llama{from{transform:scaleY(.85);} to{transform:scaleY(1.15);}}
   /* Fuego animado de la espada de la Armadura de Dios (se dibuja con JS en un canvas) */
   .sword-fire-canvas{position:absolute; pointer-events:none; z-index:11; mix-blend-mode:screen;}
+  .fx-off .sword-fire-canvas{display:none;}
 
   /* ---- Verificación de adulto (PIN compras) ---- */
   .pin-overlay{position:fixed; inset:0; background:rgba(8,8,18,.78); z-index:9999; display:none; align-items:center; justify-content:center;}
@@ -3206,7 +3207,7 @@ const ACCESSORIES = [
 
 // Fecha de esta build: cambia sola cada vez que se genera el archivo, así el
 // navegador nunca sirve imágenes viejas desde el caché al actualizar el juego.
-const BUILD_VERSION = '20261013-baston';
+const BUILD_VERSION = '20261014-batalla';
 
 // Sistema de detección automática de imágenes de cuerpo completo: para CUALQUIER
 // traje, el juego intenta cargar IMG_DIR + 'boy_<id>_fullbody.webp' / 'girl_<id>_fullbody.webp'
@@ -3260,8 +3261,9 @@ const SWORD_FIRE = (function(){
     if(!cw || !ch) return false;
     if(st.cw === cw && st.ch === ch) return true;
     st.cw = cw; st.ch = ch;
-    const s = Math.min(cw/IMG_W, ch/IMG_H);       // la imagen está en "contain" abajo-centro
-    const ox = (cw - IMG_W*s)/2, oy = ch - IMG_H*s;
+    const izq = el.id === 'fighterPlayer';        // en la batalla la imagen va abajo-izquierda a todo el alto
+    const s = izq ? ch/IMG_H : Math.min(cw/IMG_W, ch/IMG_H);   // si no: "contain" abajo-centro
+    const ox = izq ? 0 : (cw - IMG_W*s)/2, oy = ch - IMG_H*s;
     const cv = st.canvas;
     cv.style.left = (-MARGIN)+'px'; cv.style.top = (-MARGIN)+'px';
     cv.style.width = (cw+2*MARGIN)+'px'; cv.style.height = (ch+2*MARGIN)+'px';
@@ -3418,7 +3420,8 @@ const STAFF_GLOW = (function(){
     if(!cw || !ch) return false;
     if(st.cw === cw && st.ch === ch) return true;
     st.cw = cw; st.ch = ch;
-    const s = Math.min(cw/IMG_W, ch/IMG_H), ox = (cw - IMG_W*s)/2, oy = ch - IMG_H*s;
+    const izq = el.id === 'fighterPlayer';
+    const s = izq ? ch/IMG_H : Math.min(cw/IMG_W, ch/IMG_H), ox = izq ? 0 : (cw - IMG_W*s)/2, oy = ch - IMG_H*s;
     const w = Math.round((cw+2*MARGIN)*RES), h = Math.round((ch+2*MARGIN)*RES);
     const cv = st.canvas; cv.style.left = (-MARGIN)+'px'; cv.style.top = (-MARGIN)+'px';
     cv.style.width = (cw+2*MARGIN)+'px'; cv.style.height = (ch+2*MARGIN)+'px'; cv.width = w; cv.height = h;
@@ -3539,6 +3542,7 @@ function warmupFullbodyCache(onDone){
     });
     jobs.push(checkFullbodyExists(fullbodyShopFileName(g, 'armadura-Dios')));
     jobs.push(checkFullbodyExists(fullbodyShopFileName(g, 'moises')));
+    jobs.push(checkFullbodyExists(IMG_DIR + g + '_moises_fullbody_glow.webp'));
   });
   Promise.all(jobs).then(()=>{
     // Si la tienda ya estaba abierta cuando terminó de comprobar, refrescar
@@ -3637,15 +3641,22 @@ function applyOutfitVisuals(){
       // Mientras todavía no sabemos si existe la imagen de cuerpo completo,
       // no mostramos NADA (antes se veía el muñeco armado por piezas sueltas).
       const esperandoImagen = known === undefined;
-      // Espada de fuego animada: solo en mapa y tienda (en la pelea sigue la imagen original).
+      // Efectos animados (fuego de la espada / luz del bastón): mapa, tienda y batalla.
       let fbUrl = fullbodyCandidate, fireOn = false, glowUrl = '';
-      if((outfit.id === 'armadura-Dios' || outfit.id === 'moises') && el.id !== 'fighterPlayer' && showFullbody){
+      if((outfit.id === 'armadura-Dios' || outfit.id === 'moises') && showFullbody){
         const shopUrl = fullbodyShopFileName(genderKey, outfit.id);
         const shopKnown = FULLBODY_CACHE[shopUrl];
         if(shopKnown === true){
-          fbUrl = shopUrl;
-          if(outfit.id === 'armadura-Dios') fireOn = true;
-          else glowUrl = IMG_DIR + genderKey + '_moises_fullbody_glow.webp?' + BUILD_VERSION;
+          if(outfit.id === 'armadura-Dios'){ fbUrl = shopUrl; fireOn = true; }
+          else{
+            // Moisés: la imagen tenue (_shop) solo se usa si también existe la capa de luz (_glow)
+            const glowFile = IMG_DIR + genderKey + '_moises_fullbody_glow.webp';
+            const glowKnown = FULLBODY_CACHE[glowFile];
+            if(glowKnown === true){ fbUrl = shopUrl; glowUrl = glowFile + '?' + BUILD_VERSION; }
+            else if(glowKnown === undefined){
+              checkFullbodyExists(glowFile).then(()=>{ if(state.equippedOutfit === outfit.id) applyOutfitVisuals(); });
+            }
+          }
         }
         else if(shopKnown === undefined){
           checkFullbodyExists(shopUrl).then(ok=>{
@@ -3656,6 +3667,7 @@ function applyOutfitVisuals(){
       if(showFullbody){
         fullbodyNode.style.display = 'block';
         fullbodyNode.style.backgroundImage = 'url("' + fbUrl + '?' + BUILD_VERSION + '")';
+        fullbodyNode.dataset.restUrl = fbUrl;
       }else{
         fullbodyNode.style.display = 'none';
       }
@@ -4493,6 +4505,7 @@ function resolveBattleTurn(correct){
     // El cuerpo (cabeza, torso, piernas) queda fijo: solo se anima el brazo que golpea
     if(usingFullbody){
       if(punchUrlBT){
+        playerEl.classList.add('fx-off');   // la pose de golpe ya trae su propio efecto pintado
         playerFullbody.style.backgroundImage = 'url("' + punchUrlBT + '?' + BUILD_VERSION + '")';
       }else{
         // Sin pose de golpe dedicada para este traje: el cuerpo entero se lanza
@@ -4533,7 +4546,8 @@ function resolveBattleTurn(correct){
     playerArm.classList.remove('punching');
     armLeft.classList.remove('punching');
     if(usingFullbody && punchUrlBT){
-      playerFullbody.style.backgroundImage = 'url("' + restUrlBT + '?' + BUILD_VERSION + '")';
+      playerFullbody.style.backgroundImage = 'url("' + (playerFullbody.dataset.restUrl || restUrlBT) + '?' + BUILD_VERSION + '")';
+      playerEl.classList.remove('fx-off');
     }
     if(bossNeck) bossNeck.classList.remove('biting');
   }, 500);
